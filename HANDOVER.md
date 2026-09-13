@@ -225,6 +225,14 @@ db.query({ databaseId: 'GgZ71tywhs4HEZytFSqXTP', ... })  // ✅
 ✅ 现在 `dOnly()` 同时兼容：字符串 / `{date:...}` / `{text:...}` / `Date`。
 demo 的种子数据就是 `{date:...}`，所以这个坑不修 demo 里所有日期都是错的。
 
+同一个坑还有第二张脸：**文本字段也是对象**。资料库的文本 / 单选 / 来源字段返回 `{text:'字节跳动'}`，
+直接 `String(v)` 拼进 innerHTML 或 textContent 就会渲染成 `[object Object]`（线上 demo 就出现过：
+投递记录卡片的公司、岗位、阶段全变成 `[object Object]`）。
+
+✅ 共享 JS 里新增 `plain(v)`：兼容 字符串 / `{text|value|name|date|link}` / 数组取首项。
+`setFieldText()`、今日待办标题、搜索关键词拼接、删除确认框文案都已改走 `plain()`。
+以后新增渲染逻辑，字段值一律先过 `plain(...)`，不要再直接拼接。
+
 ### 坑 9：demo 页面不能保留生产环境的导航链接
 
 demo 是纯静态站，如果页面里还有指向 `https://www.workbuddy.cn/space/d/...` 的链接，
@@ -313,7 +321,9 @@ Settings → Pages → Source 手动选「GitHub Actions」。
 - [x] 演示横幅改为普通文档流（原来 `position:fixed` 会盖住 sticky 导航）
 - [x] demo 种子数据改为相对今天的日期，随时打开都有逾期/临期/正常三类样本
 - [x] 补齐仓库缺失的 `build_single.py` / `sync_interns.py` / `deploy_pages.py` / `canonical_schema.json` / `schema_union.json`
-- [x] CI 五项校验：内联 JS 语法 / demo 自包含 / 合并版标记 / 产物一致性 / 页面数
+- [x] CI 全绿：workflow YAML 自检（坑 13）+ 内联 JS 语法 / demo 自包含 / 合并版标记 / 产物一致性 / 页面数
+- [x] GitHub Pages 已在仓库里启用（`build_type=workflow`），<https://dorchain-chang.github.io/-/> 部署成功
+- [x] 字段值对象拍平成 `plain()`，修掉页面上的 `[object Object]`（见坑 8）
 - [x] HANDOVER / README / PUSH_TO_GITHUB 与实际架构、真实仓库地址对齐
 
 ---

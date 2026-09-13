@@ -481,6 +481,9 @@ function diffDays(a,b){if(!a||!b)return null;return Math.round((Date.parse(b)-Da
 function optId(field,text){var l=OPTS[field]||[];for(var i=0;i<l.length;i++){if(l[i].text===text)return l[i].id}return text}
 function optText(field,idOrText){var l=OPTS[field]||[];for(var i=0;i<l.length;i++){if(l[i].id===idOrText)return l[i].text}return idOrText||''}
 function fieldText(j,f){var v=j[f];if(v==null)return '';if(typeof v==='object')return String(v.text||'');return String(v)}
+// 资料库返回的字段值可能是对象（{text:'x'} / {date:'x'} / [{...}]），
+// 直接拼进字符串会渲染成 [object Object]，统一在这里拍平成可读文本
+function plain(v){if(v==null)return '';if(typeof v==='object'){if(typeof v.length==='number')v=(v&&v[0])||{};return String(v.text||v.value||v.name||v.date||v.link||'')}return String(v)}
 function urlVal(v){if(!v)return {text:'',link:''};if(typeof v==='object'){if(typeof v.length==='number')v=(v&&v[0])||{};return {text:String(v.text||v.link||''),link:String(v.link||v.text||'')}}return {text:String(v),link:String(v)}}
 function recId(r){return (r&&(r._id||r.record_id||r.id))||''}
 function webSearchUrl(q){return 'https://www.bing.com/search?q='+encodeURIComponent(q+' 校招 网申入口')}
@@ -494,7 +497,7 @@ function appStage(a){return a['当前阶段']?optText('当前阶段',typeof a['�
 function showLinkModal(link){var m=$('lnkModal');if(!m){alert('投递链接：'+link);return}$('lnkTxt').textContent=link;m.style.display='flex';$('lnkCopy').onclick=function(){var done=function(){$('lnkCopy').textContent='已复制'};try{var ta=document.createElement('textarea');ta.value=link;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();var ok=document.execCommand('copy');document.body.removeChild(ta);if(ok){done();return}}catch(e){}if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(link).then(done)}}};
 function openLink(link){if(!link){alert('这条记录没有填链接');return}var w=null;try{w=window.open(link,'_blank')}catch(e){}if(!w)showLinkModal(link);}
 function jobLink(j){return urlVal(j['投递链接']).link}
-function jobJump(j){var l=jobLink(j);var c=j['公司']||'';return l||searchUrl(c)||webSearchUrl(c)}
+function jobJump(j){var l=jobLink(j);var c=plain(j['公司']);return l||searchUrl(c)||webSearchUrl(c)}
 
 /* ---------- 公司情报面板 ---------- */
 function intelLinks(c){
@@ -550,7 +553,7 @@ function bindExpress(){
   });
 }
 
-function setFieldText(root,name,val,dbid){var el=root.querySelector('[data-field="'+name+'"]');if(!el)return;if(name==='投递链接'||name==='相关链接'){var u=urlVal(val);el.style.display='';if(u.link){el.className=name==='投递链接'?'btn btn-go btn-sm':'btn btn-ghost btn-sm';el.textContent=name==='投递链接'?'直达官网':'链接';el.setAttribute('href',u.link)}else{el.className='btn btn-search btn-sm';el.textContent=name==='投递链接'?'搜索网申入口':'搜索进度';el.removeAttribute('href')}}else{el.textContent=val==null?'':String(val)}el.setAttribute('data-sp-bindable','database');el.setAttribute('data-sp-database-id',dbid)}
+function setFieldText(root,name,val,dbid){var el=root.querySelector('[data-field="'+name+'"]');if(!el)return;if(name==='投递链接'||name==='相关链接'){var u=urlVal(val);el.style.display='';if(u.link){el.className=name==='投递链接'?'btn btn-go btn-sm':'btn btn-ghost btn-sm';el.textContent=name==='投递链接'?'直达官网':'链接';el.setAttribute('href',u.link)}else{el.className='btn btn-search btn-sm';el.textContent=name==='投递链接'?'搜索网申入口':'搜索进度';el.removeAttribute('href')}}else{el.textContent=plain(val)}el.setAttribute('data-sp-bindable','database');el.setAttribute('data-sp-database-id',dbid)}
 function setText(id,v){var el=$(id);if(el)el.textContent=v}
 function markBindable(el,dbid){el.setAttribute('data-sp-bindable','database');el.setAttribute('data-sp-database-id',dbid)}
 
@@ -585,15 +588,15 @@ function todayItems(){
     if(state.todayMine&&!mineMatch(j))return;
     var dd=dOnly(j['截止日期']);if(!dd)return;
     var n=diffDays(t,dd);
-    if(n<0)items.push({kind:'job',level:'red',badge:'已过截止',title:j['公司']||'未命名公司',meta:'岗位：'+(j['岗位方向']||'未填')+' ｜ 截止 '+dd+'（已过'+(-n)+'天）',rec:j});
-    else if(n<=3)items.push({kind:'job',level:'orange',badge:(n===0?'今天截止':'剩'+n+'天'),title:j['公司']||'未命名公司',meta:'岗位：'+(j['岗位方向']||'未填')+' ｜ 截止 '+dd,rec:j});
+    if(n<0)items.push({kind:'job',level:'red',badge:'已过截止',title:plain(j['公司'])||'未命名公司',meta:'岗位：'+(plain(j['岗位方向'])||'未填')+' ｜ 截止 '+dd+'（已过'+(-n)+'天）',rec:j});
+    else if(n<=3)items.push({kind:'job',level:'orange',badge:(n===0?'今天截止':'剩'+n+'天'),title:plain(j['公司'])||'未命名公司',meta:'岗位：'+(plain(j['岗位方向'])||'未填')+' ｜ 截止 '+dd,rec:j});
   });
   state.apps.forEach(function(a){
     var st=appStage(a);if(st==='Offer'||st==='感谢信')return;
     var nd=dOnly(a['下次节点']);if(!nd)return;
     var n=diffDays(t,nd);
-    if(n<0)items.push({kind:'app',level:'red',badge:'节点已过',title:(a['公司']||'')+' · '+(a['岗位']||''),meta:st+' ｜ 原定 '+nd+'（'+(a['节点说明']||'未填说明')+'）',rec:a});
-    else if(n<=1)items.push({kind:'app',level:'blue',badge:(n===0?'今天':'明天'),title:(a['公司']||'')+' · '+(a['岗位']||''),meta:st+' ｜ '+nd+'（'+(a['节点说明']||'未填说明')+'）',rec:a});
+    if(n<0)items.push({kind:'app',level:'red',badge:'节点已过',title:plain(a['公司'])+' · '+plain(a['岗位']),meta:st+' ｜ 原定 '+nd+'（'+(plain(a['节点说明'])||'未填说明')+'）',rec:a});
+    else if(n<=1)items.push({kind:'app',level:'blue',badge:(n===0?'今天':'明天'),title:plain(a['公司'])+' · '+plain(a['岗位']),meta:st+' ｜ '+nd+'（'+(plain(a['节点说明'])||'未填说明')+'）',rec:a});
   });
   items.sort(function(x,y){var o={red:0,orange:1,blue:2};return o[x.level]-o[y.level]});
   return items;
@@ -659,8 +662,8 @@ function renderApps(){
     var opt0=document.createElement('option');opt0.value='';opt0.textContent='改阶段';sel.appendChild(opt0);
     STAGES.forEach(function(s){var o=document.createElement('option');o.value=optId('当前阶段',s);o.textContent=s;sel.appendChild(o)});
     sel.addEventListener('change',function(){if(!sel.value)return;sel.disabled=true;db.updateRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(a),properties:{'当前阶段':{select:sel.value}}}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:',e);sel.disabled=false})});
-    card.querySelector('.anote').addEventListener('click',function(){var v=prompt('复盘笔记：',a['复盘笔记']||'');if(v===null)return;db.updateRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(a),properties:{'复盘笔记':{text:v}}}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:',e)})});
-    card.querySelector('.adel').addEventListener('click',function(){if(!confirm('确定删除「'+(a['公司']||'')+'」这条记录吗？'))return;db.deleteRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(a)}).then(reloadAll).catch(function(e){console.error('[database] 删除失败:',e)})});
+    card.querySelector('.anote').addEventListener('click',function(){var v=prompt('复盘笔记：',plain(a['复盘笔记']));if(v===null)return;db.updateRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(a),properties:{'复盘笔记':{text:v}}}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:',e)})});
+    card.querySelector('.adel').addEventListener('click',function(){if(!confirm('确定删除「'+plain(a['公司'])+'」这条记录吗？'))return;db.deleteRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(a)}).then(reloadAll).catch(function(e){console.error('[database] 删除失败:',e)})});
     box.appendChild(card);
   });
 }
@@ -709,7 +712,7 @@ function filteredJobs(){
     if(state.at_fBatchF&&bt!==state.at_fBatchF)return false;
     if(state.at_fCity&&fieldText(j,'工作地点').indexOf(state.at_fCity)<0)return false;
     if(state.at_fCareer&&fieldText(j,'岗位方向').indexOf(state.at_fCareer)<0)return false;
-    if(state.at_q){var q=state.at_q.toLowerCase();var hay=((j['公司']||'')+' '+(j['岗位方向']||'')+' '+(j['备注']||'')).toLowerCase();if(hay.indexOf(q)<0)return false}
+    if(state.at_q){var q=state.at_q.toLowerCase();var hay=(plain(j['公司'])+' '+plain(j['岗位方向'])+' '+plain(j['备注'])).toLowerCase();if(hay.indexOf(q)<0)return false}
     return true;
   }).sort(function(a,b){var x=dOnly(a['截止日期'])||'9999',y=dOnly(b['截止日期'])||'9999';return x<y?-1:1});
 }
@@ -753,7 +756,7 @@ function buildJobCard(j){
     jst.disabled=true;
     db.updateRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(j),properties:{'投递状态':{select:jst.value}}}).then(function(){return jst.value==='已投递'?syncTracking(j):null}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:',e);jst.disabled=false});
   });
-  card.querySelector('.jdel').addEventListener('click',function(){if(!confirm('确定删除「'+(j['公司']||'')+'」这条岗位吗？'))return;db.deleteRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(j)}).then(reloadAll).catch(function(e){console.error('[database] 删除失败:',e)})});
+  card.querySelector('.jdel').addEventListener('click',function(){if(!confirm('确定删除「'+plain(j['公司'])+'」这条岗位吗？'))return;db.deleteRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(j)}).then(reloadAll).catch(function(e){console.error('[database] 删除失败:',e)})});
   return card;
 }
 function syncTracking(rec){
@@ -825,7 +828,7 @@ function filteredSOE(){
     var st=jobStatus(j);if(state.so_fSt&&st!==state.so_fSt)return false;
     if(state.so_fCity&&fieldText(j,'工作地点').indexOf(state.so_fCity)<0)return false;
     if(state.so_fCareer&&fieldText(j,'岗位方向').indexOf(state.so_fCareer)<0)return false;
-    if(state.so_q){var q=state.so_q.toLowerCase();var hay=((j['公司']||'')+' '+(j['岗位方向']||'')+' '+(j['备注']||'')).toLowerCase();if(hay.indexOf(q)<0)return false}
+    if(state.so_q){var q=state.so_q.toLowerCase();var hay=(plain(j['公司'])+' '+plain(j['岗位方向'])+' '+plain(j['备注'])).toLowerCase();if(hay.indexOf(q)<0)return false}
     return true;
   }).sort(function(a,b){var x=dOnly(a['截止日期'])||'9999',y=dOnly(b['截止日期'])||'9999';return x<y?-1:1});
 }
@@ -859,7 +862,7 @@ function buildJobCard(j){
   var jst=card.querySelector('.jstatus');jst.innerHTML='';
   (OPTS['投递状态']||[]).forEach(function(o){var op=document.createElement('option');op.value=o.text;op.textContent=o.text;jst.appendChild(op)});jst.value=st;
   jst.addEventListener('change',function(){if(!jst.value||jst.value===st){jst.value=st;return}jst.disabled=true;db.updateRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(j),properties:{'投递状态':{select:jst.value}}}).then(function(){return jst.value==='已投递'?syncTracking(j):null}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:',e);jst.disabled=false})});
-  card.querySelector('.jdel').addEventListener('click',function(){if(!confirm('确定删除「'+(j['公司']||'')+'」这条岗位吗？'))return;db.deleteRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(j)}).then(reloadAll).catch(function(e){console.error('[database] 删除失败:',e)})});
+  card.querySelector('.jdel').addEventListener('click',function(){if(!confirm('确定删除「'+plain(j['公司'])+'」这条岗位吗？'))return;db.deleteRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(j)}).then(reloadAll).catch(function(e){console.error('[database] 删除失败:',e)})});
   return card;
 }
 function syncTracking(rec){var company=fieldText(rec,'公司');if(!company)return Promise.resolve();var exists=state.apps.some(function(a){return fieldText(a,'公司')===company});if(exists)return Promise.resolve();var p={'公司':{text:company},'岗位':{text:fieldText(rec,'岗位方向')||'校招岗位'},'当前阶段':{select:'已投递'},'投递日期':{date:today()},'节点说明':{text:'由岗位看板一键标记自动生成'}};var u=urlVal(rec['投递链接']);if(u.link)p['相关链接']={url:{text:'网申入口',link:u.link}};return db.addRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',properties:p}).catch(function(e){console.error(e)});}
@@ -909,9 +912,9 @@ MODS.push({refresh:function(){renderFilterFacets();renderJobs();},setup:function
 function filteredInterns(){
   return state.interns.filter(function(i){
     var st=jobStatus(i);if(state.ir_fSt&&st!==state.ir_fSt)return false;
-    if(state.ir_q){var q=state.ir_q.toLowerCase();var hay=((i['公司']||'')+' '+(i['岗位名称']||'')+' '+(i['备注']||'')).toLowerCase();if(hay.indexOf(q)<0)return false}
+    if(state.ir_q){var q=state.ir_q.toLowerCase();var hay=(plain(i['公司'])+' '+plain(i['岗位名称'])+' '+plain(i['备注'])).toLowerCase();if(hay.indexOf(q)<0)return false}
     return true;
-  }).sort(function(a,b){var c=(a['公司']||'');var cc=(b['公司']||'');return c<cc?-1:1});
+  }).sort(function(a,b){var c=plain(a['公司']);var cc=plain(b['公司']);return c<cc?-1:1});
 }
 function renderInterns(){
   var box=$('ir_jobCards'),rows=filteredInterns();
@@ -930,7 +933,7 @@ function buildInternCard(i){
   var jst=card.querySelector('.jstatus');jst.innerHTML='';
   (OPTS['投递状态']||[]).forEach(function(o){var op=document.createElement('option');op.value=o.text;op.textContent=o.text;jst.appendChild(op)});jst.value=st;
   jst.addEventListener('change',function(){if(!jst.value||jst.value===st){jst.value=st;return}jst.disabled=true;db.updateRecord({databaseId:'tgH8096uENTaIj8RSY9qm5',recordId:recId(i),properties:{'投递状态':{select:jst.value}}}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:',e);jst.disabled=false})});
-  card.querySelector('.jdel').addEventListener('click',function(){if(!confirm('确定删除「'+(i['公司']||'')+'」这条实习岗位吗？'))return;db.deleteRecord({databaseId:'tgH8096uENTaIj8RSY9qm5',recordId:recId(i)}).then(reloadAll).catch(function(e){console.error('[database] 删除失败:',e)})});
+  card.querySelector('.jdel').addEventListener('click',function(){if(!confirm('确定删除「'+plain(i['公司'])+'」这条实习岗位吗？'))return;db.deleteRecord({databaseId:'tgH8096uENTaIj8RSY9qm5',recordId:recId(i)}).then(reloadAll).catch(function(e){console.error('[database] 删除失败:',e)})});
   return card;
 }
 function bindSubmitIntern(){
