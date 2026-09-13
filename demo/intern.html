@@ -164,6 +164,20 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri);box
 label.fl{display:block;margin:6px 0 0}
 .mtail{font-size:11px;color:var(--sub);text-align:center;margin-top:4px}
 .navSpacer{height:8px}
+/* ---------- 公司情报面板 ---------- */
+.intel-card{background:#fff;border-radius:18px;max-width:560px;width:100%;max-height:82vh;overflow:auto;padding:20px;box-shadow:0 24px 60px rgba(15,23,42,.25);animation:pop .18s ease}
+.intel-head{display:flex;align-items:flex-start;gap:10px}
+.intel-head b{font-size:17px;display:block}
+.intel-head p{font-size:12px;color:var(--sub);margin:2px 0 0}
+.intel-head .iclose{margin-left:auto;border:0;background:#f1f3f7;width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:13px;color:var(--sub);flex:none}
+.intel-head .iclose:hover{background:#e6e9f0;color:var(--txt)}
+.isec{font-size:12px;font-weight:700;color:var(--pri);margin:16px 0 8px;display:flex;align-items:center;gap:8px}
+.isec::after{content:'';flex:1;height:1px;background:var(--line)}
+.iitem{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin-bottom:6px;background:#fafbfe;transition:box-shadow .15s,border-color .15s}
+.iitem:hover{box-shadow:var(--shadow);border-color:#d5dcea}
+.iitem .iinfo{flex:1;min-width:0}
+.iitem .iinfo b{font-size:14px;display:block}
+.iitem .iinfo span{font-size:12px;color:var(--sub)}
 /* ---------- 弹层 ---------- */
 #lnkModal .lnk-card{background:#fff;border-radius:18px;max-width:520px;width:100%;padding:20px;box-shadow:0 24px 60px rgba(15,23,42,.25);animation:pop .18s ease}
 @keyframes pop{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}
@@ -231,7 +245,7 @@ label.fl{display:block;margin:6px 0 0}
     <div class="jmeta">薪资：<span data-field="薪资"></span> ｜ 地点：<span data-field="工作地点"></span> ｜ <span data-field="岗位要求"></span></div>
     <div class="jnote" data-field="备注"></div>
     <div class="jmeta">来源：<span data-field="来源"></span></div>
-    <div class="jacts"><a class="btn btn-ghost btn-sm" data-field="投递链接" target="_blank" rel="noopener">投递</a><button class="btn btn-search btn-sm jsearch">搜公司</button><select class="jstatus"></select><button class="btn btn-gray btn-sm jdel">删除</button></div>
+    <div class="jacts"><a class="btn btn-ghost btn-sm" data-field="投递链接" target="_blank" rel="noopener">投递</a><button class="btn btn-search btn-sm jsearch">公司情报</button><select class="jstatus"></select><button class="btn btn-gray btn-sm jdel">删除</button></div>
   </div>
 </div>
 
@@ -246,6 +260,18 @@ label.fl{display:block;margin:6px 0 0}
       <button class="btn btn-gray btn-sm" id="lnkClose">关闭</button>
       <button class="btn btn-pri btn-sm" id="lnkCopy">复制链接</button>
     </div>
+  </div>
+</div>
+
+
+<div id="intelModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:98;align-items:center;justify-content:center;padding:20px">
+  <div class="intel-card">
+    <div class="intel-head">
+      <div><b id="intelName">公司情报</b><p>投递前先看：面经经验、公司背景、薪资评价</p></div>
+      <button class="iclose" id="intelClose">✕</button>
+    </div>
+    <div id="intelBody"></div>
+    <p style="font-size:11px;color:var(--sub);text-align:center;margin-top:14px">各条目在新窗口打开 · 沙箱内被拦截时会出现复制链接弹层</p>
   </div>
 </div>
 
@@ -382,6 +408,52 @@ function openLink(link){if(!link){alert('这条记录没有填链接');return}va
 function jobLink(j){return urlVal(j['投递链接']).link}
 function jobJump(j){var l=jobLink(j);var c=j['公司']||'';return l||searchUrl(c)||webSearchUrl(c)}
 
+/* ---------- 公司情报面板 ---------- */
+function intelLinks(c){
+  var e=encodeURIComponent;
+  return [
+    {sec:'面经与入职经验',items:[
+      {t:'牛客 · 面经搜索',d:'笔试真题、面试流程、通过率、入职体验帖',u:'https://www.nowcoder.com/search/all?query='+e(c+' 面经')},
+      {t:'牛客 · 公司讨论区',d:'薪资爆料、offer 对比、加班情况',u:'https://www.nowcoder.com/search/all?query='+e(c+' 公司')},
+      {t:'全网经验帖聚合',d:'知乎/博客的面经与校招经验搜索',u:'https://www.bing.com/search?q='+e(c+' 校招 面经 入职体验')}
+    ]},
+    {sec:'公司背景',items:[
+      {t:'百度百科',d:'主营业务、规模、母公司背景',u:'https://baike.baidu.com/item/'+e(c)},
+      {t:'爱企查 · 工商信息',d:'股权结构、注册信息、是否国企/经营风险',u:'https://aiqicha.baidu.com/s?q='+e(c)},
+      {t:'官方网站',d:'找官方招聘频道与业务线介绍',u:'https://www.bing.com/search?q='+e(c+' 官网 招聘')}
+    ]},
+    {sec:'薪资与评价',items:[
+      {t:'看准网',d:'员工评价、面试题库、薪资爆料',u:'https://www.kanzhun.com/search/?query='+e(c)},
+      {t:'职友集',d:'薪资统计、招聘趋势、公司排行',u:'https://www.jobui.com/search/?keyword='+e(c)}
+    ]}
+  ];
+}
+function showIntel(company){
+  var c=(company||'').trim()||'未命名公司';
+  var m=$('intelModal');
+  if(!m){openLink(webSearchUrl(c));return}
+  $('intelName').textContent=c+' · 公司情报';
+  var html='';
+  intelLinks(c).forEach(function(g){
+    html+='<div class="isec">'+g.sec+'</div>';
+    g.items.forEach(function(it){
+      html+='<div class="iitem"><div class="iinfo"><b>'+it.t+'</b><span>'+it.d+'</span></div>'
+           +'<button class="btn btn-pri btn-sm igoto" data-u="'+it.u.replace(/"/g,'&quot;')+'">打开</button></div>';
+    });
+  });
+  $('intelBody').innerHTML=html;
+  Array.prototype.forEach.call($('intelBody').querySelectorAll('.igoto'),function(b){
+    b.addEventListener('click',function(){openLink(b.getAttribute('data-u'))});
+  });
+  m.style.display='flex';
+}
+function bindIntelClose(){
+  var m=$('intelModal');if(!m)return;
+  $('intelClose').addEventListener('click',function(){m.style.display='none'});
+  m.addEventListener('click',function(e){if(e.target===m)m.style.display='none'});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')m.style.display='none'});
+}
+
 function setFieldText(root,name,val,dbid){var el=root.querySelector('[data-field="'+name+'"]');if(!el)return;if(name==='投递链接'||name==='相关链接'){var u=urlVal(val);el.style.display='';if(u.link){el.className=name==='投递链接'?'btn btn-go btn-sm':'btn btn-ghost btn-sm';el.textContent=name==='投递链接'?'直达官网':'链接';el.setAttribute('href',u.link)}else{el.className='btn btn-search btn-sm';el.textContent=name==='投递链接'?'搜索网申入口':'搜索进度';el.removeAttribute('href')}}else{el.textContent=val==null?'':String(val)}el.setAttribute('data-sp-bindable','database');el.setAttribute('data-sp-database-id',dbid)}
 function setText(id,v){var el=$(id);if(el)el.textContent=v}
 function markBindable(el,dbid){el.setAttribute('data-sp-bindable','database');el.setAttribute('data-sp-database-id',dbid)}
@@ -421,8 +493,8 @@ function buildInternCard(i){
   var st=jobStatus(i);
   setFieldText(card,'公司',i['公司'],INTERN_ID);setFieldText(card,'岗位名称',i['岗位名称'],INTERN_ID);setFieldText(card,'薪资',i['薪资'],INTERN_ID);setFieldText(card,'工作地点',i['工作地点'],INTERN_ID);setFieldText(card,'岗位要求',i['岗位要求'],INTERN_ID);setFieldText(card,'备注',i['备注'],INTERN_ID);setFieldText(card,'来源',i['来源'],INTERN_ID);
   var stEl=card.querySelector('[data-field="投递状态"]');if(st==='已投递')stEl.className='tag ok';else if(st==='不投了')stEl.className='tag gray';
-  card.querySelector('[data-field="投递链接"]').addEventListener('click',function(e){e.preventDefault();openLink(urlVal(i['投递链接']).link||webSearchUrl(fieldText(i,'公司')+' 成都 实习 招聘'))});
-  card.querySelector('.jsearch').addEventListener('click',function(){openLink(webSearchUrl(fieldText(i,'公司')+' 成都 实习 招聘'))});
+  card.querySelector('[data-field="投递链接"]').addEventListener('click',function(e){e.preventDefault();var l=urlVal(i['投递链接']).link;if(l){openLink(l)}else{showIntel(fieldText(i,'公司'))}});
+  card.querySelector('.jsearch').addEventListener('click',function(){showIntel(fieldText(i,'公司'))});
   var jst=card.querySelector('.jstatus');jst.innerHTML='';
   (OPTS['投递状态']||[]).forEach(function(o){var op=document.createElement('option');op.value=o.text;op.textContent=o.text;jst.appendChild(op)});jst.value=st;
   jst.addEventListener('change',function(){if(!jst.value||jst.value===st){jst.value=st;return}jst.disabled=true;db.updateRecord({databaseId:'INTERN_ID_FAKE',recordId:recId(i),properties:{'投递状态':{select:jst.value}}}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:',e);jst.disabled=false})});
@@ -448,6 +520,7 @@ function fillSelect(selId,field,withAll){var sel=$(selId);if(!sel)return;sel.inn
 function renderSelectOptions(){fillSelect('fSt','投递状态',true);}
 function init(){
   db=window.__SMART_PAGE__&&window.__SMART_PAGE__.database;
+  bindIntelClose();
   if(!db){goOffline();return}
   setText('syncTxt','已同步');bindSubmitIntern();
   bindFormCache('internForm');
