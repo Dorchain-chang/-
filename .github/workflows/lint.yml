@@ -18,6 +18,11 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Extract inline JS and syntax-check
         run: |
           set -e
@@ -48,6 +53,34 @@ sys.stdout.write(m.group(1) if m else '')
             fi
           done
           echo "✓ all demo pages have adapter"
+
+      - name: Verify demo pages stay self-contained
+        run: |
+          # demo 是纯静态站，导航不能指向生产环境（资料库）节点，否则一点就跳走
+          if grep -q "workbuddy.cn/space/d/" demo/*.html; then
+            echo "✗ demo 页面里残留了生产环境链接"
+            grep -n "workbuddy.cn/space/d/" demo/*.html || true
+            exit 1
+          fi
+          # 生产页反过来必须保留真实的资料库 databaseId
+          if ! grep -q "GgZ71tywhs4HEZytFSqXTP" pages/01-秋招岗位台.html; then
+            echo "✗ 生产页丢失了 databaseId 字面量"
+            exit 1
+          fi
+          echo "✓ demo 自包含 / 生产页 databaseId 完整"
+
+      - name: Verify generated files are up to date
+        run: |
+          set -e
+          python3 pages/build_pages.py
+          python3 pages/build_demo.py
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          if ! git diff --exit-code -- pages demo; then
+            echo "✗ pages/ 或 demo/ 里的文件与生成脚本不一致，请在本地跑："
+            echo "    python3 pages/build_pages.py && python3 pages/build_demo.py"
+            exit 1
+          fi
+          echo "✓ 生成产物与脚本一致"
 
       - name: Verify page count
         run: |

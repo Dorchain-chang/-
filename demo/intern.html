@@ -119,11 +119,11 @@ label.fl{display:block;margin:6px 0 0}
 
 <nav class="tabbar">
   <div class="inner">
-    <a class="logo" target="_top" href="https://www.workbuddy.cn/space/d/szZlSjyPnnpGwDW4OD4y0X"><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>秋招求职台</a>
-    <a class="tab" target="_top" href="https://www.workbuddy.cn/space/d/szZlSjyPnnpGwDW4OD4y0X" >总览</a>
-    <a class="tab" target="_top" href="https://www.workbuddy.cn/space/d/G9pPkUVWIc6Fk43Mnn1csc" >秋招岗位</a>
-    <a class="tab" target="_top" href="https://www.workbuddy.cn/space/d/PQ5cLpifIyB1CaQB2OIMrm" >央国企</a>
-    <a class="tab" target="_top" href="https://www.workbuddy.cn/space/d/JgXPaIiaDMGt2xH3vBftAo" aria-current="page">成都实习</a>
+    <a class="logo" href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>秋招求职台</a>
+    <a class="tab" href="index.html" >总览</a>
+    <a class="tab" href="autumn.html" >秋招岗位</a>
+    <a class="tab" href="soe.html" >央国企</a>
+    <a class="tab" href="intern.html" aria-current="page">成都实习</a>
     <div class="sync" id="syncBox"><span class="dot"></span><span id="syncTxt">连接中…</span></div>
   </div>
 </nav>
@@ -198,62 +198,77 @@ label.fl{display:block;margin:6px 0 0}
     'apps':{name:'apps',dbid:'APPS_ID_FAKE',options:{},order:1},
     'interns':{name:'interns',dbid:'INTERN_ID_FAKE',options:{},order:2}
   };}
+  function dbidOf(name){return loadSchema()[name].dbid;}
   function fakeDb(names){
-    var db={};
-    names.forEach(function(name){
-      var dbid=loadSchema()[name].dbid;
-      db.query=function(){return Promise.resolve({results:loadLS(name),hasMore:false,nextCursor:null});};
-      db.addRecord=function(opts){
-        var rows=loadLS(name);
-        var id='rec_'+Date.now()+'_'+Math.floor(Math.random()*1e6);
+    // databaseId -> 本地表名 的映射；所有方法按 opts.databaseId 分派，
+    // 避免三个表共用同一个闭包变量导致互相覆盖（旧版 bug：三张表都返回 interns）。
+    var map={};
+    names.forEach(function(n){map[dbidOf(n)]=n;});
+    function nameOf(opts){
+      var id=(opts&&opts.databaseId)||'';
+      return Object.prototype.hasOwnProperty.call(map,id)?map[id]:names[0];
+    }
+    function nextId(){return 'rec_'+Date.now()+'_'+Math.floor(Math.random()*1e6);}
+    return {
+      query:function(opts){
+        var n=nameOf(opts);
+        return Promise.resolve({results:loadLS(n),hasMore:false,nextCursor:null});
+      },
+      addRecord:function(opts){
+        var n=nameOf(opts),rows=loadLS(n),id=nextId();
         var rec={_id:id,record_id:id,id:id};
-        Object.keys(opts.properties||{}).forEach(function(k){rec[k]=opts.properties[k]});
-        rows.push(rec);saveLS(name,rows);
+        Object.keys(opts.properties||{}).forEach(function(k){rec[k]=opts.properties[k];});
+        rows.push(rec);saveLS(n,rows);
         return Promise.resolve({_id:id,record_id:id});
-      };
-      db.updateRecord=function(opts){
-        var rows=loadLS(name);
+      },
+      updateRecord:function(opts){
+        var n=nameOf(opts),rows=loadLS(n);
         var i=rows.findIndex(function(r){return (r._id||r.record_id)===opts.recordId;});
-        if(i>=0){Object.keys(opts.properties||{}).forEach(function(k){rows[i][k]=opts.properties[k]});saveLS(name,rows);}
+        if(i>=0){Object.keys(opts.properties||{}).forEach(function(k){rows[i][k]=opts.properties[k];});saveLS(n,rows);}
         return Promise.resolve({ok:true});
-      };
-      db.deleteRecord=function(opts){
-        var rows=loadLS(name);
-        saveLS(name,rows.filter(function(r){return (r._id||r.record_id)!==opts.recordId;}));
+      },
+      deleteRecord:function(opts){
+        var n=nameOf(opts);
+        saveLS(n,loadLS(n).filter(function(r){return (r._id||r.record_id)!==opts.recordId;}));
         return Promise.resolve({ok:true});
-      };
-      db.getSchema=function(){
-        var sch={
-          JOBS_ID_FAKE:{properties:[]},
-          APPS_ID_FAKE:{properties:[]},
-          INTERN_ID_FAKE:{properties:[]}
-        }[dbid];
-        return Promise.resolve(sch);
-      };
-    });
-    return db;
+      },
+      // 返回真实的 select 字段，让页面里的下拉框/选项映射（OPTS）在 demo 下也能正常填充
+      getSchema:function(opts){
+        var s=loadSchema()[nameOf(opts)]||{};
+        var props=[];
+        Object.keys(s.options||{}).forEach(function(k){
+          props.push({name:k,type:'select',config:{options:s.options[k]||[]}});
+        });
+        return Promise.resolve({properties:props});
+      }
+    };
   }
   if(!hasSDK()){
-    // Demo banner
+    // Demo banner：用普通文档流（不是 fixed），避免盖住顶部 sticky 导航
     document.addEventListener('DOMContentLoaded',function(){
       var b=document.createElement('div');
-      b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99;background:#fef3c7;color:#92400e;text-align:center;padding:8px;font-size:13px;border-bottom:1px solid #fbbf24';
-      b.innerHTML='🌐 GitHub Pages 演示模式：数据存在浏览器 localStorage。<a href="javascript:void(0)" onclick="if(confirm(\'清空演示数据？\')){localStorage.clear();location.reload();}" style="color:#b45309;text-decoration:underline">清空演示数据</a>';
-      document.body.appendChild(b);
+      b.style.cssText='position:relative;z-index:99;background:#fef3c7;color:#92400e;text-align:center;padding:8px 12px;font-size:13px;border-bottom:1px solid #fbbf24;line-height:1.5';
+      b.innerHTML='GitHub Pages 演示模式：数据只存在当前浏览器的 localStorage，不会同步到资料库。<a href="javascript:void(0)" id="demoWipe" style="color:#b45309;text-decoration:underline">清空演示数据</a>';
+      document.body.insertBefore(b,document.body.firstChild);
+      document.getElementById('demoWipe').onclick=function(){
+        if(confirm('清空演示数据？会恢复初始示例岗位。')){localStorage.clear();location.reload();}
+      };
     });
     // Mock SDK: only query that returns localStorage; write operations update localStorage.
     window.__SMART_PAGE__={database:fakeDb(['jobs','apps','interns'])};
     // Pre-fill demo data on first visit
     if(!localStorage.getItem('qiuzhao_demo_seeded_v1')){
+      // 演示数据用「相对今天」的日期生成，保证任何时候打开 demo 都有逾期/临期/正常三类样本
+      function d(off){var t=new Date();t.setDate(t.getDate()+off);function p(n){return (n<10?'0':'')+n}return t.getFullYear()+'-'+p(t.getMonth()+1)+'-'+p(t.getDate());}
       var demoJobs=[
-        {公司:{text:'字节跳动'},批次:{text:'27秋招'},岗位方向:{text:'大模型算法、推荐算法'},工作地点:{text:'北京、上海'},优先级:{text:'P0'},投递状态:{text:'待投递'},网申开始:{date:'2026-09-01'},截止日期:{date:'2026-09-30'},投递链接:{url:{text:'官网',link:'https://jobs.bytedance.com'}},来源:{text:'牛客校招日程'},备注:{text:'示例数据，演示用'}},
-        {公司:{text:'中国电信'},批次:{text:'27秋招'},岗位方向:{text:'云计算、AI'},工作地点:{text:'北京'},优先级:{text:'P1'},投递状态:{text:'待投递'},截止日期:{date:'2026-10-20'},投递链接:{url:{text:'网申',link:'https://zhaopin.chinatelecom.com.cn'}},来源:{text:'牛客校招日程'},备注:{text:'央国企示例'}},
-        {公司:{text:'中国移动'},批次:{text:'27秋招'},岗位方向:{text:'人工智能、数据'},工作地点:{text:'成都'},优先级:{text:'P1'},投递状态:{text:'待投递'},截止日期:{date:'2026-11-10'},投递链接:{url:{text:'网申',link:'https://job.10086.cn'}},来源:{text:'牛客校招日程'},备注:{text:'央国企示例'}},
-        {公司:{text:'腾讯'},批次:{text:'27暑期实习'},岗位方向:{text:'机器学习'},工作地点:{text:'深圳、北京'},优先级:{text:'P0'},投递状态:{text:'待投递'},截止日期:{date:'2026-10-05'},投递链接:{url:{text:'官网',link:'https://careers.tencent.com'}},来源:{text:'牛客校招日程'},备注:{text:'互联网示例'}},
-        {公司:{text:'美团'},批次:{text:'27秋招'},岗位方向:{text:'后端、算法'},工作地点:{text:'北京'},优先级:{text:'P2'},投递状态:{text:'待投递'},截止日期:{date:'2026-10-12'},投递链接:{url:{text:'官网',link:'https://zhaopin.meituan.com'}},来源:{text:'牛客校招日程'},备注:{text:'互联网示例'}},
-        {公司:{text:'商汤科技'},批次:{text:'27秋招'},岗位方向:{text:'AGI算法、视觉算法'},工作地点:{text:'北京、上海'},优先级:{text:'P1'},投递状态:{text:'待投递'},截止日期:{date:'2026-10-08'},投递链接:{url:{text:'官网',link:'https://www.sensetime.com/cn/careers'}},来源:{text:'牛客校招日程'},备注:{text:'互联网示例'}}
+        {公司:{text:'字节跳动'},批次:{text:'27秋招'},岗位方向:{text:'大模型算法、推荐算法'},工作地点:{text:'北京、上海'},优先级:{text:'P0'},投递状态:{text:'待投递'},网申开始:{date:d(-12)},截止日期:{date:d(3)},投递链接:{url:{text:'官网',link:'https://jobs.bytedance.com'}},来源:{text:'牛客校招日程'},备注:{text:'示例数据，演示用'}},
+        {公司:{text:'中国电信'},批次:{text:'27秋招'},岗位方向:{text:'云计算、AI'},工作地点:{text:'北京'},优先级:{text:'P1'},投递状态:{text:'待投递'},截止日期:{date:d(20)},投递链接:{url:{text:'网申',link:'https://zhaopin.chinatelecom.com.cn'}},来源:{text:'牛客校招日程'},备注:{text:'央国企示例'}},
+        {公司:{text:'中国移动'},批次:{text:'27秋招'},岗位方向:{text:'人工智能、数据'},工作地点:{text:'成都'},优先级:{text:'P1'},投递状态:{text:'待投递'},截止日期:{date:d(30)},投递链接:{url:{text:'网申',link:'https://job.10086.cn'}},来源:{text:'牛客校招日程'},备注:{text:'央国企示例'}},
+        {公司:{text:'腾讯'},批次:{text:'27暑期实习'},岗位方向:{text:'机器学习'},工作地点:{text:'深圳、北京'},优先级:{text:'P0'},投递状态:{text:'待投递'},截止日期:{date:d(-2)},投递链接:{url:{text:'官网',link:'https://careers.tencent.com'}},来源:{text:'牛客校招日程'},备注:{text:'已过期示例（今天要处理里的红色项）'}},
+        {公司:{text:'美团'},批次:{text:'27秋招'},岗位方向:{text:'后端、算法'},工作地点:{text:'北京'},优先级:{text:'P2'},投递状态:{text:'待投递'},截止日期:{date:d(12)},投递链接:{url:{text:'官网',link:'https://zhaopin.meituan.com'}},来源:{text:'牛客校招日程'},备注:{text:'互联网示例'}},
+        {公司:{text:'商汤科技'},批次:{text:'27秋招'},岗位方向:{text:'AGI算法、视觉算法'},工作地点:{text:'北京、上海'},优先级:{text:'P1'},投递状态:{text:'待投递'},截止日期:{date:d(8)},投递链接:{url:{text:'官网',link:'https://www.sensetime.com/cn/careers'}},来源:{text:'牛客校招日程'},备注:{text:'互联网示例'}}
       ];
-      var demoApps=[{公司:{text:'字节跳动'},岗位:{text:'大模型算法实习生'},当前阶段:{text:'一面'},投递日期:{date:'2026-09-08'},下次节点:{date:'2026-09-15'},节点说明:{text:'技术一面'},复盘笔记:{text:'演示数据'},相关链接:{url:{text:'官网',link:'https://jobs.bytedance.com'}}}];
+      var demoApps=[{公司:{text:'字节跳动'},岗位:{text:'大模型算法实习生'},当前阶段:{text:'一面'},投递日期:{date:d(-5)},下次节点:{date:d(2)},节点说明:{text:'技术一面'},复盘笔记:{text:'演示数据'},相关链接:{url:{text:'官网',link:'https://jobs.bytedance.com'}}}];
       var demoInterns=[{公司:{text:'腾讯成都'},岗位名称:{text:'技术类实习'},薪资:{text:'200-300元/天'},工作地点:{text:'成都'},岗位要求:{text:'实习'},投递状态:{text:'待投递'},投递链接:{url:{text:'投递',link:'https://careers.tencent.com'}},来源:{text:'演示数据'},备注:{text:'演示'}}];
       saveLS('jobs',demoJobs.map(function(r){var id='seed_'+Math.random().toString(36).slice(2,10);r._id=id;r.record_id=id;r.id=id;return r;}));
       saveLS('apps',demoApps.map(function(r){var id='seed_'+Math.random().toString(36).slice(2,10);r._id=id;r.record_id=id;r.id=id;return r;}));
@@ -267,15 +282,6 @@ label.fl{display:block;margin:6px 0 0}
       localStorage.setItem('qiuzhao_demo_schema',JSON.stringify(schema));
       localStorage.setItem('qiuzhao_demo_seeded_v1','1');
     }
-    // Load schema options into local OPTS for demo mode
-    var sch=loadSchema();
-    window.__DEMO_OPTS__={};
-    // Load existing options
-    ['jobs','apps','interns'].forEach(function(n){
-      var s=localStorage.getItem('qiuzhao_demo_schema');
-      var opts=s?JSON.parse(s)[n].options:{};
-      window.__DEMO_OPTS__[n]=opts;
-    });
   }
 })();
 /* === END DEMO MODE ADAPTER ============================================= */
@@ -296,7 +302,8 @@ function $(id){return document.getElementById(id)}
 function esc(s){return String(s==null?'':s).replace(/[&<>""]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function dayStr(d){var p=function(n){return (n<10?'0':'')+n};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())}
 function today(){return dayStr(new Date())}
-function dOnly(v){return v?String(v).slice(0,10):''}
+// 日期字段可能以字符串 'YYYY-MM-DD'、对象 date/text/value 字段、或 Date 形式出现，全部兼容
+function dOnly(v){if(v==null)return '';if(typeof v==='object'){v=v.date||v.text||v.value||v.start||''}return String(v).slice(0,10)}
 function diffDays(a,b){if(!a||!b)return null;return Math.round((Date.parse(b)-Date.parse(a))/86400000)}
 function optId(field,text){var l=OPTS[field]||[];for(var i=0;i<l.length;i++){if(l[i].text===text)return l[i].id}return text}
 function optText(field,idOrText){var l=OPTS[field]||[];for(var i=0;i<l.length;i++){if(l[i].id===idOrText)return l[i].text}return idOrText||''}
@@ -390,7 +397,7 @@ function init(){
   $('q').addEventListener('input',function(){state.q=$('q').value.trim();renderInterns()});
   $('fSt').addEventListener('change',function(){state.fSt=$('fSt').value;renderInterns()});
   Promise.all([db.getSchema({databaseId:'JOBS_ID_FAKE'}),db.getSchema({databaseId:'APPS_ID_FAKE'}),db.getSchema({databaseId:'INTERN_ID_FAKE'})]).then(function(ss){
-    if(window.__DEMO_OPTS__){Object.keys(window.__DEMO_OPTS__).forEach(function(n){Object.keys(window.__DEMO_OPTS__[n]).forEach(function(k){OPTS[k]=window.__DEMO_OPTS__[n][k]})})}else{ss.forEach(function(schema){(schema.properties||[]).forEach(function(f){if((f.type==='select'||f.type==='multi_select')&&f.config&&f.config.options){OPTS[f.name]=f.config.options}})})};
+    ss.forEach(function(schema){(schema.properties||[]).forEach(function(f){if((f.type==='select'||f.type==='multi_select')&&f.config&&f.config.options){OPTS[f.name]=f.config.options}})});
     renderSelectOptions();
     return reloadAll();
   }).catch(function(e){console.error('[database] 初始化失败:',e);goOffline()});

@@ -227,7 +227,8 @@ function $(id){return document.getElementById(id)}
 function esc(s){return String(s==null?'':s).replace(/[&<>""]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function dayStr(d){var p=function(n){return (n<10?'0':'')+n};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())}
 function today(){return dayStr(new Date())}
-function dOnly(v){return v?String(v).slice(0,10):''}
+// 日期字段可能以字符串 'YYYY-MM-DD'、对象 date/text/value 字段、或 Date 形式出现，全部兼容
+function dOnly(v){if(v==null)return '';if(typeof v==='object'){v=v.date||v.text||v.value||v.start||''}return String(v).slice(0,10)}
 function diffDays(a,b){if(!a||!b)return null;return Math.round((Date.parse(b)-Date.parse(a))/86400000)}
 function optId(field,text){var l=OPTS[field]||[];for(var i=0;i<l.length;i++){if(l[i].text===text)return l[i].id}return text}
 function optText(field,idOrText){var l=OPTS[field]||[];for(var i=0;i<l.length;i++){if(l[i].id===idOrText)return l[i].text}return idOrText||''}

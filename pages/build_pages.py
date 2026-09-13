@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build 4 modular HTML pages for the qiuzhao workbench."""
 from pathlib import Path
-import json, re
+import json, os, re
 
 OUT = Path(__file__).parent
 
@@ -140,7 +140,8 @@ function $(id){{return document.getElementById(id)}}
 function esc(s){{return String(s==null?'':s).replace(/[&<>""]/g,function(c){{return {{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}}[c]}})}}
 function dayStr(d){{var p=function(n){{return (n<10?'0':'')+n}};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())}}
 function today(){{return dayStr(new Date())}}
-function dOnly(v){{return v?String(v).slice(0,10):''}}
+// 日期字段可能以字符串 'YYYY-MM-DD'、对象 date/text/value 字段、或 Date 形式出现，全部兼容
+function dOnly(v){{if(v==null)return '';if(typeof v==='object'){{v=v.date||v.text||v.value||v.start||''}}return String(v).slice(0,10)}}
 function diffDays(a,b){{if(!a||!b)return null;return Math.round((Date.parse(b)-Date.parse(a))/86400000)}}
 function optId(field,text){{var l=OPTS[field]||[];for(var i=0;i<l.length;i++){{if(l[i].text===text)return l[i].id}}return text}}
 function optText(field,idOrText){{var l=OPTS[field]||[];for(var i=0;i<l.length;i++){{if(l[i].id===idOrText)return l[i].text}}return idOrText||''}}
@@ -916,11 +917,14 @@ def main():
     (here/p_aut['filename']).write_text(p_aut['content'], encoding='utf-8')
     (here/p_soe['filename']).write_text(p_soe['content'], encoding='utf-8')
     (here/p_int['filename']).write_text(p_int['content'], encoding='utf-8')
-    # also write to workspace root for import
-    (workspace/p_over['filename']).write_text(p_over['content'], encoding='utf-8')
-    (workspace/p_aut['filename']).write_text(p_aut['content'], encoding='utf-8')
-    (workspace/p_soe['filename']).write_text(p_soe['content'], encoding='utf-8')
-    (workspace/p_int['filename']).write_text(p_int['content'], encoding='utf-8')
+    # 只有显式 QIUZHAO_EXPORT_ROOT=1 时才另外导出一份到上级目录（给资料库导入用），
+    # 默认不导出，保证 CI 里 `git diff --exit-code` 干净。
+    if os.environ.get("QIUZHAO_EXPORT_ROOT") == "1":
+        (workspace/p_over['filename']).write_text(p_over['content'], encoding='utf-8')
+        (workspace/p_aut['filename']).write_text(p_aut['content'], encoding='utf-8')
+        (workspace/p_soe['filename']).write_text(p_soe['content'], encoding='utf-8')
+        (workspace/p_int['filename']).write_text(p_int['content'], encoding='utf-8')
+        print("exported 4 pages to", workspace)
     # write per-page schema files
     for name, fields in SCHEMAS.items():
         sub = {"properties": {k: v for k, v in full["properties"].items() if k in fields},

@@ -2,3 +2,10 @@ __pycache__/
 *.pyc
 .DS_Store
 node_modules/
+
+# 构建产物（由 pages/build_pages.py 生成，不入库）
+pages/canonical_*.json
+_site/
+
+# 本地环境
+.env

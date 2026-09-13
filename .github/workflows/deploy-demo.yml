@@ -27,22 +27,22 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Add .nojekyll
-        run: touch .nojekyll
-
-      - name: Copy site root
+      # 站点根目录 = demo/ 的内容本身，这样 demo 里的相对链接
+      # （index.html / autumn.html / soe.html / intern.html）天然可用。
+      # 不要把整个仓库当站点根上传，否则 .github、pages/ 都会被公网访问到。
+      - name: Build site into _site
         run: |
-          # 把 README.md 也复制到 demo 的子页面，让 demo 入口有介绍
-          cp README.md demo/README.md || true
-          # Pages 站点根目录 = 当前仓库根 + (可选)/docs
-          # 我们要让 demo 在根目录 /demo/ 下，所以根目录直接放 demo 里的内容
-          # 但根路径 / 应该能跳到 demo，所以复制 demo/index.html 到 ./index.html
-          cp demo/index.html ./index.html
+          set -e
+          rm -rf _site && mkdir -p _site
+          cp demo/*.html _site/
+          cp README.md _site/README.md
+          touch _site/.nojekyll
+          ls -R _site
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: _site
 
       - name: Deploy to GitHub Pages
         id: deployment

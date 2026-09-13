@@ -8,6 +8,8 @@
 
 工作台使用 [腾讯文档·资料库](https://docs.qq.com) 的「在线 page」+「数据表」能力部署，数据云端同步、多设备共享。
 
+**在线 demo（不需要登录，数据只存在你自己的浏览器里）**：<https://dou-chang.github.io/qiuzhao-workbench/>
+
 ## 4 个独立页面
 
 按功能拆分为 4 个独立节点，避免滚动：
@@ -32,11 +34,11 @@
 
 工作台背后是 3 张数据表（都在腾讯文档·资料库里）：
 
-| 表名 | 字段 | 表 ID |
+| 表名 | 字段（类型） | 表 ID |
 |------|------|-------|
-| 秋招岗位清单 | 公司 / 批次 / 岗位方向 / 工作地点 / 优先级 / 投递状态 / 网申起止日期 / 投递链接 / 来源 / 备注 | `GgZ71tywhs4HEZytFSqXTP` |
-| 简历投递跟踪 | 公司 / 岗位 / 当前阶段 / 投递日期 / 下次节点 / 节点说明 / 复盘笔记 / 相关链接 | `oBGkMFTv9Xv4Xn5gFOK18S` |
-| 成都实习岗位 | 公司 / 岗位名称 / 薪资 / 工作地点 / 岗位要求 / 投递状态 / 投递链接 / 来源 / 备注 | `tgH8096uENTaIj8RSY9qm5` |
+| 秋招岗位清单 | 公司(text) / 批次(select: 27秋招·27暑期实习·27日常实习·其他) / 岗位方向(text) / 工作地点(text) / 优先级(select: P0·P1·P2) / 投递状态(select: 待投递·已投递·不投了) / 网申开始(date) / 截止日期(date) / 投递链接(url) / 来源(text) / 备注(text) | `GgZ71tywhs4HEZytFSqXTP` |
+| 简历投递跟踪 | 公司(text) / 岗位(text) / 当前阶段(select: 已投递·笔试·一面·二面·HR面·Offer·感谢信) / 投递日期(date) / 下次节点(date) / 节点说明(text) / 复盘笔记(text) / 相关链接(url) | `oBGkMFTv9Xv4Xn5gFOK18S` |
+| 成都实习岗位 | 公司(text) / 岗位名称(text) / 薪资(text) / 工作地点(text) / 岗位要求(text) / 投递状态(select) / 投递链接(url) / 来源(text) / 备注(text) | `tgH8096uENTaIj8RSY9qm5` |
 
 ## 技术栈
 
@@ -57,16 +59,37 @@
 │   ├── 01-秋招岗位台.html         #   · 非央国企岗位看板
 │   ├── 02-央国企台.html           #   · 央国企专栏
 │   ├── 03-成都实习台.html         #   · 成都实习专区
-│   └── build_pages.py             #   · 用同一脚本生成 4 个页面（来源单一改完即可）
+│   ├── build_pages.py             #   · 用同一脚本生成 4 个页面（来源单一改完即可）
+│   └── build_demo.py              #   · 给生产页套一层 localStorage mock 生成 demo/
 ├── demo/                          # GitHub Pages 用，零依赖可独立部署
 │   ├── index.html                 #   · 同"00-总览台"但使用 mock 数据 + localStorage
 │   ├── autumn.html
 │   ├── soe.html
 │   └── intern.html
-└── docs/
-    ├── screenshot.png             # 截图占位
-    └── DEPLOY.md                  # 部署到腾讯文档·资料库的步骤
+├── docs/
+│   └── DEPLOY.md                  # 部署到腾讯文档·资料库的步骤
+└── .github/workflows/
+    ├── deploy-demo.yml            # push 后自动构建 demo/ 并部署到 GitHub Pages
+    └── lint.yml                   # 内联 JS 语法检查 + demo 自包含 + 产物一致性
 ```
+
+## 改代码后必做
+
+`pages/*.html` 和 `demo/*.html` **都是生成出来的**，改它们没用，下次跑脚本会被覆盖：
+
+```bash
+python pages/build_pages.py    # 生成 pages/*.html
+python pages/build_demo.py     # 生成 demo/*.html
+```
+
+只想再导出一份到上级目录方便往资料库导入：
+
+```bash
+QIUZHAO_EXPORT_ROOT=1 python pages/build_pages.py
+```
+
+CI（`.github/workflows/lint.yml`）会重新跑这两个脚本并检查 `git diff`，
+忘记生成/忘记提交会被判红。
 
 ## 本地预览
 
@@ -78,6 +101,8 @@ python -m http.server 8080
 # 然后打开
 open http://localhost:8080
 ```
+
+demo 顶部有黄色横幅提示「演示模式」，数据存在浏览器 localStorage，可以点「清空演示数据」恢复初始示例。
 
 ## 部署到腾讯文档·资料库
 
