@@ -23,25 +23,17 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Extract inline JS and syntax-check
+      # 坑：不要把多行 python / JS 代码直接写进 `run: |` 块标量里 —— 顶格的代码
+      # 行会被 YAML 当成块外内容，整个 workflow 直接解析失败（GitHub 的表现是
+      # 0 个 job、不到 1 秒就挂的红色运行，没有日志）。多行脚本请放到 pages/ 下。
+
+      - name: Check workflow YAML parses
         run: |
-          set -e
-          mkdir -p /tmp/chk
-          for f in pages/*.html demo/*.html; do
-            base=$(basename "$f" .html)
-            python3 -c '
-import re,sys
-html=open(sys.argv[1],encoding="utf-8").read()
-m=re.search(r"<script>(.*?)</script>",html,re.S)
-sys.stdout.write(m.group(1) if m else "")
-' "$f" > "/tmp/chk/${base}.js"
-            if node --check "/tmp/chk/${base}.js"; then
-              echo "OK  $f"
-            else
-              echo "FAIL $f"
-              exit 1
-            fi
-          done
+          python3 -m pip install --quiet --disable-pip-version-check pyyaml || true
+          python3 pages/check_workflows.py
+
+      - name: Check inline JS syntax
+        run: python3 pages/check_inline_js.py
 
       - name: Verify demo stays self-contained
         run: |

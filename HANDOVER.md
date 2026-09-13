@@ -265,6 +265,33 @@ CI 里有 `grep workbuddy.cn/space/d/ demo/*.html` 的回归校验，改回跨�
 
 改完必须跑：`build_pages.py` → `build_single.py` → `build_demo.py`，再一起提交。
 
+### 坑 13：不要把多行脚本写进 workflow 的 `run: |` 块标量
+
+`.github/workflows/lint.yml` 里曾经直接塞了一段内联 python：
+
+```yaml
+        run: |
+          python3 -c '
+import re,sys          # ← 顶格，YAML 认为块标量在这里结束了
+          '
+```
+
+顶格的行会被 YAML 当成块外内容 → **整个 workflow 解析失败**。GitHub 的表现极其隐晦：
+运行记录里 workflow 名字直接显示成 `.github/workflows/lint.yml`，`conclusion=failure`，
+`jobs` 数量为 0，耗时不到 1 秒，**连日志都没有**。
+
+✅ 现在多行脚本一律放 `pages/*.py`（如 `pages/check_inline_js.py`），workflow 只写一行调用；
+并且加了 `pages/check_workflows.py` 在 CI 最前面做 YAML 解析自检，同类问题不会再悄悄溜进去。
+
+### 坑 14：仓库没启用 Pages 时 `configure-pages` 会直接失败
+
+首次部署报错：`Get Pages site failed ... HttpError: Not Found`（`GET /repos/{owner}/{repo}/pages` 404）。
+原因是仓库设置里还没启用 Pages，而不是 workflow 写错。
+
+✅ `deploy-demo.yml` 的 Setup Pages 步骤已加 `enablement: true`，让 action 自动把 Pages 打开
+（`build_type=workflow`，配合 `permissions: pages: write`）。若仍失败，去
+Settings → Pages → Source 手动选「GitHub Actions」。
+
 ---
 
 ## 6. 已完成的功能
@@ -316,7 +343,7 @@ CI 里有 `grep workbuddy.cn/space/d/ demo/*.html` 的回归校验，改回跨�
 页内 Tab 切 4 个模块，已在腾讯文档·资料库部署，GitHub 仓库和 Pages demo 都已上线。
 
 请你先：
-1. 读 HANDOVER.md（项目背景 + 12 个坑 + schema + 待办）
+1. 读 HANDOVER.md（项目背景 + 14 个坑 + schema + 待办）
 2. 读 README.md（对外说明 + 数据表 + 技术栈）
 3. 用 `ls github_repo/pages` 和 `ls github_repo/demo` 看一下当前结构
 4. 然后告诉我：你现在理解了什么、有没有疑问、你想先做哪一项

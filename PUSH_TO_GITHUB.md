@@ -49,26 +49,31 @@ git push
 
 `.github/workflows/deploy-demo.yml`：push 到 `main` 后自动执行
 
-1. 把 `demo/*.html` 复制到 `_site/`
-2. `touch _site/.nojekyll`（避免 Jekyll 处理）
-3. 上传 `_site` 并发布
+1. `Setup Pages`（`configure-pages`，带 `enablement: true`，仓库第一次跑时会顺手启用 Pages）
+2. 把 `demo/*.html` 复制到 `_site/`
+3. `touch _site/.nojekyll`（避免 Jekyll 处理）
+4. 上传 `_site` 并发布
 
 要点：
 - **站点根就是 demo 本身**，所以地址是 `https://dorchain-chang.github.io/-/`，没有 `/demo/` 后缀
 - 不要把整个仓库当站点根上传，否则 `.github/`、`pages/` 会被公网访问到
 - 想手动重跑：仓库 → **Actions** → `Deploy demo to GitHub Pages` → **Run workflow**
+- 若报 `Get Pages site failed ... HttpError: Not Found`：仓库还没启用 Pages。
+  现在靠 `enablement: true` 自动开启；仍失败就去 Settings → Pages → Source 选「GitHub Actions」
 
 ## CI 会检查什么（lint.yml）
 
 每次 push / PR 都会跑，红了就说明有问题：
 
-1. `pages/*.html` + `demo/*.html` 的内联 JS 语法（`node --check`）
-2. demo 里有 `DEMO MODE ADAPTER` 适配层，且**没有**残留 `workbuddy.cn/space/d/` 生产链接
-3. 生产页保留了真实的 `databaseId` 字面量
-4. `pages/00-总览台.html` 确实是合并版（含 `data-view`），且无跨节点跳转
-5. **产物一致性**：重新跑三连生成脚本后 `git diff` 必须为空
+1. `.github/workflows/*.yml` 能被 YAML 解析（`pages/check_workflows.py`）
+   → workflow 写坏时 GitHub 只会给一个「0 job、秒挂、无日志」的红叉，所以先在 CI 里自检
+2. `pages/*.html` + `demo/*.html` 的内联 JS 语法（`pages/check_inline_js.py` → `node --check`）
+3. demo 里有 `DEMO MODE ADAPTER` 适配层，且**没有**残留 `workbuddy.cn/space/d/` 生产链接
+4. 生产页保留了真实的 `databaseId` 字面量
+5. `pages/00-总览台.html` 确实是合并版（含 `data-view`），且无跨节点跳转
+6. **产物一致性**：重新跑三连生成脚本后 `git diff` 必须为空
    → 改了 `pages/` 或 `demo/` 却忘了跑生成脚本、或者只提交了一半，这里会抓出来
-6. 页面数量：`pages/` 4 个、`demo/` 1 个
+7. 页面数量：`pages/` 4 个、`demo/` 1 个
 
 ## 认证出问题时的备选方案
 
@@ -93,7 +98,7 @@ git push
 ```
 github_repo/
 ├── README.md                  # 项目说明（GitHub 主页）
-├── HANDOVER.md                # 给接手 AI 的交接文档（10 个坑 / schema / 待办）
+├── HANDOVER.md                # 给接手 AI 的交接文档（14 个坑 / schema / 待办）
 ├── PUSH_TO_GITHUB.md          # 本文件
 ├── LICENSE                    # MIT
 ├── .gitignore
@@ -101,7 +106,7 @@ github_repo/
 ├── schema_union.json          # 构建输入：资料库三张表的 schema 快照
 ├── .github/workflows/
 │   ├── deploy-demo.yml        # 自动构建 demo/ 并部署到 GitHub Pages
-│   └── lint.yml               # 语法 + 自包含 + 合并版标记 + 产物一致性
+│   └── lint.yml               # YAML 自检 + 语法 + 自包含 + 产物一致性
 ├── pages/                     # 生产页 + 全部构建脚本
 │   ├── 00-总览台.html         #   · build_single.py 产出的合并版单文件应用
 │   ├── 01-秋招岗位台.html     #   · 独立模块页
@@ -110,6 +115,8 @@ github_repo/
 │   ├── build_pages.py         #   · ① 生成 4 个独立模块页
 │   ├── build_single.py        #   · ② 合并成单文件应用
 │   ├── build_demo.py          #   · ③ 套 localStorage mock 生成 demo
+│   ├── check_inline_js.py     #   · CI：内联 JS 语法检查
+│   ├── check_workflows.py     #   · CI：workflow YAML 解析自检
 │   ├── sync_interns.py        #   · 牛客校招日程 -> 实习表 同步脚本
 │   └── deploy_pages.py        #   · 把页面推到腾讯文档·资料库节点
 ├── demo/                      # GitHub Pages 站点（0 依赖离线 demo）

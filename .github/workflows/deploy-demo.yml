@@ -26,6 +26,11 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          # 仓库第一次跑部署时 Pages 还没被启用，configure-pages 会调
+          # GET /repos/{owner}/{repo}/pages 拿到 404 然后直接失败。
+          # enablement: true 让它顺手把 Pages 打开（build_type=workflow）。
+          enablement: true
 
       # 站点根目录 = demo/ 的内容本身。demo/ 现在只有一个 index.html
       # （合并版单文件应用 + localStorage mock，页内 Tab 切换，无跨页跳转）。
