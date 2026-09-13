@@ -1,0 +1,49 @@
+name: Deploy demo to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Add .nojekyll
+        run: touch .nojekyll
+
+      - name: Copy site root
+        run: |
+          # 把 README.md 也复制到 demo 的子页面，让 demo 入口有介绍
+          cp README.md demo/README.md || true
+          # Pages 站点根目录 = 当前仓库根 + (可选)/docs
+          # 我们要让 demo 在根目录 /demo/ 下，所以根目录直接放 demo 里的内容
+          # 但根路径 / 应该能跳到 demo，所以复制 demo/index.html 到 ./index.html
+          cp demo/index.html ./index.html
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,58 @@
+name: Lint pages (sanity check)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Extract inline JS and syntax-check
+        run: |
+          set -e
+          mkdir -p /tmp/chk
+          for f in pages/*.html demo/*.html; do
+            base=$(basename "$f" .html)
+            # extract first <script> block
+            python3 -c "
+import re,sys
+html=open('$f').read()
+m=re.search(r'<script>(.*?)</script>',html,re.S)
+sys.stdout.write(m.group(1) if m else '')
+" > /tmp/chk/${base}.js
+            if node --check /tmp/chk/${base}.js; then
+              echo "✓ $f"
+            else
+              echo "✗ $f FAILED"
+              exit 1
+            fi
+          done
+
+      - name: Verify demo adapter present
+        run: |
+          for f in demo/*.html; do
+            if ! grep -q "DEMO MODE ADAPTER" "$f"; then
+              echo "✗ $f missing demo adapter"
+              exit 1
+            fi
+          done
+          echo "✓ all demo pages have adapter"
+
+      - name: Verify page count
+        run: |
+          prod=$(ls pages/*.html 2>/dev/null | wc -l)
+          demo=$(ls demo/*.html 2>/dev/null | wc -l)
+          if [ "$prod" -ne 4 ]; then echo "✗ expected 4 prod pages, got $prod"; exit 1; fi
+          if [ "$demo" -ne 4 ]; then echo "✗ expected 4 demo pages, got $demo"; exit 1; fi
+          echo "✓ $prod prod pages, $demo demo pages"
