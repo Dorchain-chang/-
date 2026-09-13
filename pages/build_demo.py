@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Build demo versions of the 4 pages that work on GitHub Pages / any static server.
+"""Build the demo page (single-file app) that works on GitHub Pages / any static server.
 
 Inserts a localStorage-backed mock for the WorkBuddy SDK so the same HTML logic runs
 without the parent iframe.
+
+输入是 build_single.py 产出的 pages/00-总览台.html，输出是 demo/index.html。
+改了这里的种子数据记得把 SEED_VERSION 往上加一，否则老访客浏览器里还是旧的缓存。
 """
 import re, json, os
 from pathlib import Path
@@ -27,33 +30,33 @@ MOCK_ADAPTER = r"""
     'apps':{name:'apps',dbid:'APPS_ID_FAKE',options:{},order:1},
     'interns':{name:'interns',dbid:'INTERN_ID_FAKE',options:{},order:2}
   };}
-  function dbidOf(name){return loadSchema()[name].dbid;}
+  // databaseId -> 本地表名 的映射。
+  // 旧版是把方法挂在同一个 db 对象上循环覆盖，闭包最终只留住最后一次循环的 name，
+  // 于是三张表全返回同一份数据（jobs/apps 空、interns 重复三遍）。
+  // 现在所有方法都接收 opts 并按 opts.databaseId 分派。
   function fakeDb(names){
-    // databaseId -> 本地表名 的映射；所有方法按 opts.databaseId 分派，
-    // 避免三个表共用同一个闭包变量导致互相覆盖（旧版 bug：三张表都返回 interns）。
     var map={};
-    names.forEach(function(n){map[dbidOf(n)]=n;});
+    names.forEach(function(n){ map[loadSchema()[n].dbid]=n; });
     function nameOf(opts){
       var id=(opts&&opts.databaseId)||'';
-      return Object.prototype.hasOwnProperty.call(map,id)?map[id]:names[0];
+      return Object.prototype.hasOwnProperty.call(map,id) ? map[id] : names[0];
     }
-    function nextId(){return 'rec_'+Date.now()+'_'+Math.floor(Math.random()*1e6);}
+    function nextId(){ return 'rec_'+Date.now()+'_'+Math.floor(Math.random()*1e6); }
     return {
       query:function(opts){
-        var n=nameOf(opts);
-        return Promise.resolve({results:loadLS(n),hasMore:false,nextCursor:null});
+        return Promise.resolve({results:loadLS(nameOf(opts)),hasMore:false,nextCursor:null});
       },
       addRecord:function(opts){
-        var n=nameOf(opts),rows=loadLS(n),id=nextId();
+        var n=nameOf(opts), rows=loadLS(n), id=nextId();
         var rec={_id:id,record_id:id,id:id};
         Object.keys(opts.properties||{}).forEach(function(k){rec[k]=opts.properties[k];});
-        rows.push(rec);saveLS(n,rows);
+        rows.push(rec); saveLS(n,rows);
         return Promise.resolve({_id:id,record_id:id});
       },
       updateRecord:function(opts){
-        var n=nameOf(opts),rows=loadLS(n);
+        var n=nameOf(opts), rows=loadLS(n);
         var i=rows.findIndex(function(r){return (r._id||r.record_id)===opts.recordId;});
-        if(i>=0){Object.keys(opts.properties||{}).forEach(function(k){rows[i][k]=opts.properties[k];});saveLS(n,rows);}
+        if(i>=0){Object.keys(opts.properties||{}).forEach(function(k){rows[i][k]=opts.properties[k];}); saveLS(n,rows);}
         return Promise.resolve({ok:true});
       },
       deleteRecord:function(opts){
@@ -61,7 +64,8 @@ MOCK_ADAPTER = r"""
         saveLS(n,loadLS(n).filter(function(r){return (r._id||r.record_id)!==opts.recordId;}));
         return Promise.resolve({ok:true});
       },
-      // 返回真实的 select 字段，让页面里的下拉框/选项映射（OPTS）在 demo 下也能正常填充
+      // 返回真实的 select 字段，让下拉框/选项映射在 demo 下也能填充
+      // （不能只在 __DEMO_OPTS__ 里兜底，那条注入路径一旦匹配不上就全空）
       getSchema:function(opts){
         var s=loadSchema()[nameOf(opts)]||{};
         var props=[];
@@ -73,21 +77,23 @@ MOCK_ADAPTER = r"""
     };
   }
   if(!hasSDK()){
-    // Demo banner：用普通文档流（不是 fixed），避免盖住顶部 sticky 导航
+    // Demo banner
     document.addEventListener('DOMContentLoaded',function(){
       var b=document.createElement('div');
+      // 用普通文档流，不要 position:fixed —— 会盖住页面顶部的 sticky 导航
       b.style.cssText='position:relative;z-index:99;background:#fef3c7;color:#92400e;text-align:center;padding:8px 12px;font-size:13px;border-bottom:1px solid #fbbf24;line-height:1.5';
-      b.innerHTML='GitHub Pages 演示模式：数据只存在当前浏览器的 localStorage，不会同步到资料库。<a href="javascript:void(0)" id="demoWipe" style="color:#b45309;text-decoration:underline">清空演示数据</a>';
+      b.innerHTML='GitHub Pages 演示模式：数据只存在当前浏览器的 localStorage，不会写入资料库。<a href="javascript:void(0)" id="demoWipe" style="color:#b45309;text-decoration:underline">清空演示数据</a>';
       document.body.insertBefore(b,document.body.firstChild);
-      document.getElementById('demoWipe').onclick=function(){
-        if(confirm('清空演示数据？会恢复初始示例岗位。')){localStorage.clear();location.reload();}
-      };
+      var wipe=document.getElementById('demoWipe');
+      if(wipe){wipe.onclick=function(){ if(confirm('清空演示数据？会恢复初始示例岗位。')){localStorage.clear();location.reload();} };}
+
     });
     // Mock SDK: only query that returns localStorage; write operations update localStorage.
     window.__SMART_PAGE__={database:fakeDb(['jobs','apps','interns'])};
     // Pre-fill demo data on first visit
-    if(!localStorage.getItem('qiuzhao_demo_seeded_v1')){
-      // 演示数据用「相对今天」的日期生成，保证任何时候打开 demo 都有逾期/临期/正常三类样本
+    if(!localStorage.getItem('qiuzhao_demo_seeded_v2')){
+      // 演示数据用「相对今天」的日期生成，保证任何时候打开 demo 都有
+      // 逾期（红）/ 临期（橙）/ 正常 三类样本，不会随时间失效
       function d(off){var t=new Date();t.setDate(t.getDate()+off);function p(n){return (n<10?'0':'')+n}return t.getFullYear()+'-'+p(t.getMonth()+1)+'-'+p(t.getDate());}
       var demoJobs=[
         {公司:{text:'字节跳动'},批次:{text:'27秋招'},岗位方向:{text:'大模型算法、推荐算法'},工作地点:{text:'北京、上海'},优先级:{text:'P0'},投递状态:{text:'待投递'},网申开始:{date:d(-12)},截止日期:{date:d(3)},投递链接:{url:{text:'官网',link:'https://jobs.bytedance.com'}},来源:{text:'牛客校招日程'},备注:{text:'示例数据，演示用'}},
@@ -109,22 +115,22 @@ MOCK_ADAPTER = r"""
         interns:{name:'interns',dbid:'INTERN_ID_FAKE',options:{'投递状态':[{text:'待投递',id:'i_w'},{text:'已投递',id:'i_d'},{text:'不投了',id:'i_n'}]}}
       };
       localStorage.setItem('qiuzhao_demo_schema',JSON.stringify(schema));
-      localStorage.setItem('qiuzhao_demo_seeded_v1','1');
+      localStorage.setItem('qiuzhao_demo_seeded_v2','1');
     }
+    // Load schema options into local OPTS for demo mode
+    var sch=loadSchema();
+    window.__DEMO_OPTS__={};
+    // Load existing options
+    ['jobs','apps','interns'].forEach(function(n){
+      var s=localStorage.getItem('qiuzhao_demo_schema');
+      var opts=s?JSON.parse(s)[n].options:{};
+      window.__DEMO_OPTS__[n]=opts;
+    });
   }
 })();
 /* === END DEMO MODE ADAPTER ============================================= */
 
 """
-
-
-# 生产环境（资料库）节点 URL -> demo 站内的相对页面
-DEMO_LINK_MAP = {
-    "https://www.workbuddy.cn/space/d/szZlSjyPnnpGwDW4OD4y0X": "index.html",
-    "https://www.workbuddy.cn/space/d/G9pPkUVWIc6Fk43Mnn1csc": "autumn.html",
-    "https://www.workbuddy.cn/space/d/PQ5cLpifIyB1CaQB2OIMrm": "soe.html",
-    "https://www.workbuddy.cn/space/d/JgXPaIiaDMGt2xH3vBftAo": "intern.html",
-}
 
 
 def patch(src):
@@ -137,10 +143,7 @@ def patch(src):
     s = s.replace("'GgZ71tywhs4HEZytFSqXTP'", "'JOBS_ID_FAKE'")
     s = s.replace("'oBGkMFTv9Xv4Xn5gFOK18S'", "'APPS_ID_FAKE'")
     s = s.replace("'tgH8096uENTaIj8RSY9qm5'", "'INTERN_ID_FAKE'")
-    # demo 站是纯静态站：站内导航必须指向 demo 自己的页面，否则一点就跳回生产环境
-    for prod_url, local in DEMO_LINK_MAP.items():
-        s = s.replace('target="_top" href="%s"' % prod_url, 'href="%s"' % local)
-        s = s.replace('href="%s"' % prod_url, 'href="%s"' % local)
+    # Remove requirePresence checks for __SMART_PAGE__ so demo adapter works
     # Inject adapter at the very start of inline script
     script_re = re.compile(r'<script>(.*?)</script>', re.S)
     m = script_re.search(s)
@@ -148,6 +151,11 @@ def patch(src):
         original = m.group(1)
         # Adapter goes before the IIFE
         injected = MOCK_ADAPTER + original
+        # Adapt OPTS loading: if window.__DEMO_OPTS__ exists, prefer it
+        injected = injected.replace(
+            "ss.forEach(function(schema){(schema.properties||[]).forEach(function(f){if((f.type==='select'||f.type==='multi_select')&&f.config&&f.config.options){OPTS[f.name]=f.config.options}})});",
+            "if(window.__DEMO_OPTS__){Object.keys(window.__DEMO_OPTS__).forEach(function(n){Object.keys(window.__DEMO_OPTS__[n]).forEach(function(k){OPTS[k]=window.__DEMO_OPTS__[n][k]})})}else{ss.forEach(function(schema){(schema.properties||[]).forEach(function(f){if((f.type==='select'||f.type==='multi_select')&&f.config&&f.config.options){OPTS[f.name]=f.config.options}})})};"
+        )
         s = s[:m.start()] + '<script>' + injected + '</script>' + s[m.end():]
     return s
 
@@ -158,9 +166,6 @@ def main():
     demo_dir.mkdir(exist_ok=True)
     mappings = [
         ('00-总览台.html', 'index.html'),
-        ('01-秋招岗位台.html', 'autumn.html'),
-        ('02-央国企台.html', 'soe.html'),
-        ('03-成都实习台.html', 'intern.html'),
     ]
     for src_name, dst_name in mappings:
         src_path = here / src_name

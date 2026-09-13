@@ -27,8 +27,8 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      # 站点根目录 = demo/ 的内容本身，这样 demo 里的相对链接
-      # （index.html / autumn.html / soe.html / intern.html）天然可用。
+      # 站点根目录 = demo/ 的内容本身。demo/ 现在只有一个 index.html
+      # （合并版单文件应用 + localStorage mock，页内 Tab 切换，无跨页跳转）。
       # 不要把整个仓库当站点根上传，否则 .github、pages/ 都会被公网访问到。
       - name: Build site into _site
         run: |

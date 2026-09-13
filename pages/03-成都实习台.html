@@ -7,111 +7,197 @@
 <title>成都实习 · 秋招求职台</title>
 <style>
 :root{
-  --bg:#f5f7fa; --card:#ffffff; --line:#e5e9f0; --txt:#1f2937; --sub:#6b7280;
-  --pri:#2563eb; --pri-soft:#eaf1fe; --red:#dc2626; --red-soft:#fdecec;
-  --orange:#d97706; --orange-soft:#fdf3e3; --green:#059669; --green-soft:#e6f6f0;
-  --radius:14px; --shadow:0 1px 3px rgba(16,24,40,.08);
+  --bg:#f3f5fb; --card:#ffffff; --line:#e6eaf2; --txt:#1a2233; --sub:#69718a;
+  --pri:#3b5bfd; --pri2:#7c3aed; --pri-soft:#eef1fe;
+  --red:#e5484d; --red-soft:#fdeced; --red-line:#f6c6c8;
+  --orange:#e58f0b; --orange-soft:#fdf4e3; --orange-line:#f2ddb5;
+  --green:#0a9d6c; --green-soft:#e6f7f0;
+  --grad:linear-gradient(135deg,#3b5bfd,#7c3aed);
+  --grad-blue:linear-gradient(135deg,#0ea5e9,#3b5bfd);
+  --grad-red:linear-gradient(135deg,#e5484d,#f97316);
+  --grad-amber:linear-gradient(135deg,#e58f0b,#f59e0b);
+  --grad-green:linear-gradient(135deg,#0a9d6c,#10c98a);
+  --radius:16px;
+  --shadow:0 1px 2px rgba(23,32,64,.04),0 4px 16px rgba(23,32,64,.06);
+  --shadow-hi:0 2px 4px rgba(23,32,64,.05),0 12px 32px rgba(23,32,64,.10);
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);font-size:15px;line-height:1.55;padding-bottom:env(safe-area-inset-bottom)}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:#d3dae6;border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:#bcc5d8}
+::selection{background:rgba(59,91,253,.18)}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--txt);font-size:15px;line-height:1.55;padding-bottom:env(safe-area-inset-bottom);
+  background:radial-gradient(1100px 480px at 88% -120px,rgba(124,58,237,.09),transparent 62%),
+             radial-gradient(900px 420px at -8% -60px,rgba(59,91,253,.09),transparent 58%),
+             var(--bg);
+  background-attachment:fixed}
 .wrap{max-width:1000px;margin:0 auto;padding:0 16px 80px}
-nav.tabbar{position:sticky;top:0;z-index:50;background:rgba(245,247,250,.92);backdrop-filter:saturate(180%) blur(8px);-webkit-backdrop-filter:saturate(180%) blur(8px);border-bottom:1px solid var(--line)}
+/* ---------- 顶栏：毛玻璃 ---------- */
+nav.tabbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.72);backdrop-filter:saturate(180%) blur(16px);-webkit-backdrop-filter:saturate(180%) blur(16px);border-bottom:1px solid rgba(230,234,242,.9)}
 nav.tabbar .inner{max-width:1000px;margin:0 auto;display:flex;align-items:center;gap:6px;padding:10px 16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
-nav.tabbar a.logo{font-weight:700;font-size:16px;color:var(--txt);text-decoration:none;display:flex;align-items:center;gap:6px;flex:none;margin-right:6px}
-nav.tabbar a.logo svg{width:22px;height:22px}
-nav.tabbar .tab{flex:none;padding:8px 14px;border-radius:999px;font-size:13px;color:var(--sub);text-decoration:none;font-weight:600;white-space:nowrap;border:1px solid transparent;background:transparent}
-nav.tabbar .tab[aria-current="page"]{background:var(--pri);color:#fff;border-color:var(--pri)}
-nav.tabbar .tab:not([aria-current]):hover{background:var(--card);color:var(--txt)}
-nav.tabbar .sync{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);margin-left:auto;flex:none;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 10px;white-space:nowrap}
-nav.tabbar .sync .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
-nav.tabbar .sync.off .dot{background:var(--red)}
-.banner{display:none;background:var(--red-soft);color:var(--red);border:1px solid #f5c2c2;border-radius:var(--radius);padding:12px 16px;margin:14px 0;font-size:14px}
-section{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin:14px 0}
-section>h2{font-size:16px;display:flex;align-items:center;gap:8px;margin-bottom:12px}
-section>h2 svg{width:18px;height:18px;flex:none}
-section>h2 .cnt{margin-left:auto;font-size:12px;color:var(--sub);font-weight:normal}
+nav.tabbar a.logo{font-weight:800;font-size:16px;color:var(--txt);text-decoration:none;display:flex;align-items:center;gap:8px;flex:none;margin-right:6px;letter-spacing:.2px}
+nav.tabbar a.logo svg{width:28px;height:28px;background:var(--grad);border-radius:8px;padding:6px;stroke:#fff;box-shadow:0 2px 8px rgba(59,91,253,.35);flex:none}
+nav.tabbar .tab{flex:none;padding:8px 15px;border-radius:999px;font-size:13px;color:var(--sub);text-decoration:none;font-weight:600;white-space:nowrap;border:1px solid transparent;background:transparent;transition:background .15s,color .15s}
+nav.tabbar .tab[aria-current="page"]{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 2px 10px rgba(59,91,253,.35)}
+nav.tabbar .tab:not([aria-current]):hover{background:rgba(59,91,253,.08);color:var(--pri)}
+nav.tabbar .sync{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);margin-left:auto;flex:none;background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:999px;padding:5px 11px;white-space:nowrap}
+nav.tabbar .sync .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(10,157,108,.15)}
+nav.tabbar .sync.off .dot{background:var(--red);box-shadow:0 0 0 3px rgba(229,72,77,.15)}
+/* ---------- Hero 横幅 ---------- */
+.hero{max-width:1000px;margin:18px auto 0;padding:0 16px}
+.hero .hero-in{border-radius:20px;padding:22px 24px;color:#fff;display:flex;align-items:center;gap:16px;position:relative;overflow:hidden;background:var(--grad);box-shadow:0 10px 28px rgba(59,91,253,.30)}
+.hero .hero-in::before{content:'';position:absolute;right:-50px;top:-80px;width:230px;height:230px;border-radius:50%;background:rgba(255,255,255,.14)}
+.hero .hero-in::after{content:'';position:absolute;right:70px;bottom:-90px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.09)}
+.hero h1{font-size:21px;font-weight:800;letter-spacing:.3px;margin:0 0 3px;position:relative}
+.hero p{font-size:13px;opacity:.88;margin:0;position:relative}
+.hero .hero-ic{width:48px;height:48px;margin-left:auto;flex:none;opacity:.95;position:relative;filter:drop-shadow(0 2px 6px rgba(0,0,0,.15))}
+.hero.blue .hero-in{background:var(--grad-blue);box-shadow:0 10px 28px rgba(14,165,233,.28)}
+.hero.red .hero-in{background:var(--grad-red);box-shadow:0 10px 28px rgba(229,72,77,.26)}
+.hero.amber .hero-in{background:var(--grad-amber);box-shadow:0 10px 28px rgba(229,143,11,.26)}
+.banner{display:none;background:var(--red-soft);color:var(--red);border:1px solid var(--red-line);border-radius:var(--radius);padding:12px 16px;margin:14px 0;font-size:14px}
+/* ---------- 区块卡片 ---------- */
+section{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin:16px 0}
+section>h2{font-size:16px;display:flex;align-items:center;gap:10px;margin-bottom:14px;font-weight:700}
+section>h2 svg{width:32px;height:32px;flex:none;background:#f0f3fa;border-radius:9px;padding:6px}
+section>h2 .cnt{margin-left:auto;font-size:12px;color:var(--sub);font-weight:500;background:#f4f6fb;border-radius:999px;padding:3px 10px}
 #todayList{display:flex;flex-direction:column;gap:8px}
-.titem{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:#fafbfc;border:1px solid var(--line);flex-wrap:wrap}
-.titem.red{background:var(--red-soft);border-color:#f3c1c1}
-.titem.orange{background:var(--orange-soft);border-color:#f0d9b5}
-.titem.blue{background:var(--pri-soft);border-color:#c9dbfa}
-.titem .badge{font-size:11px;font-weight:600;border-radius:6px;padding:2px 8px;flex:none;color:#fff}
-.titem.red .badge{background:var(--red)}.titem.orange .badge{background:var(--orange)}.titem.blue .badge{background:var(--pri)}
+.titem{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:#fafbfe;border:1px solid var(--line);flex-wrap:wrap;transition:border-color .15s,box-shadow .15s}
+.titem:hover{box-shadow:var(--shadow)}
+.titem.red{background:var(--red-soft);border-color:var(--red-line)}
+.titem.orange{background:var(--orange-soft);border-color:var(--orange-line)}
+.titem.blue{background:var(--pri-soft);border-color:#ccd8fb}
+.titem .badge{font-size:11px;font-weight:700;border-radius:7px;padding:3px 9px;flex:none;color:#fff;letter-spacing:.3px}
+.titem.red .badge{background:var(--grad-red)}.titem.orange .badge{background:var(--grad-amber)}.titem.blue .badge{background:var(--grad)}
 .titem .tinfo{flex:1;min-width:180px}
 .titem .tinfo b{font-size:14px}
-.titem .tinfo span{display:block;font-size:12px;color:var(--sub)}
+.titem .tinfo span{display:block;font-size:12px;color:var(--sub);margin-top:1px}
 .titem .btns{display:flex;gap:6px}
-.empty{color:var(--sub);font-size:14px;text-align:center;padding:18px 0}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:0}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;text-align:center;box-shadow:var(--shadow)}
-.stat b{font-size:24px;display:block;line-height:1.2}
-.stat span{font-size:12px;color:var(--sub);display:block;margin-top:4px}
-.stat.danger b{color:var(--red)}
-.stat.danger{background:var(--red-soft);border-color:#f3c1c1}
+.empty{color:var(--sub);font-size:14px;text-align:center;padding:30px 0}
+/* ---------- 统计卡 ---------- */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:0}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 14px 15px;text-align:center;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:transform .15s,box-shadow .15s}
+.stat:hover{transform:translateY(-2px);box-shadow:var(--shadow-hi)}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.stat:nth-child(1)::before{background:var(--grad)}
+.stat:nth-child(2)::before{background:var(--grad-green)}
+.stat:nth-child(3)::before{background:var(--grad-red)}
+.stat:nth-child(4)::before{background:var(--grad-amber)}
+.stat b{font-size:30px;display:block;line-height:1.15;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.stat:nth-child(1) b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat:nth-child(2) b{background:var(--grad-green);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat:nth-child(4) b{background:var(--grad-amber);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat span{font-size:12px;color:var(--sub);display:block;margin-top:5px;font-weight:500}
+.stat.danger{background:linear-gradient(180deg,#fff5f5,#fff);border-color:var(--red-line)}
+.stat.danger b{background:var(--grad-red);-webkit-background-clip:text;background-clip:text;color:transparent}
+/* ---------- 网格/筛选 ---------- */
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
 .filters{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
-.filters input,.filters select{flex:1;min-width:120px;height:40px;border:1px solid var(--line);border-radius:8px;padding:0 10px;background:#fff;font-size:14px;font-family:inherit}
+.filters input,.filters select{flex:1;min-width:120px;height:40px;border:1px solid var(--line);border-radius:10px;padding:0 12px;background:#fff;font-size:14px;font-family:inherit;transition:border-color .15s,box-shadow .15s}
 .cards{display:flex;flex-direction:column;gap:10px}
-.jcard,.acard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
-.jcard.soe{border-color:#f3c1c1;background:#fffbfb;box-shadow:inset 3px 0 0 var(--red)}
+.jcard,.acard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 15px;display:flex;flex-direction:column;gap:6px;transition:box-shadow .18s,transform .18s,border-color .18s}
+.jcard:hover,.acard:hover{box-shadow:var(--shadow-hi);transform:translateY(-2px);border-color:#d5dcea}
+.jcard.soe{border-color:var(--red-line);background:linear-gradient(180deg,#fffafa,#fff);box-shadow:inset 3px 0 0 var(--red)}
 .jrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .jrow b{font-size:15px;flex:none}
-.tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;background:var(--pri-soft);color:var(--pri);flex:none}
+.tag{font-size:11px;font-weight:600;padding:2.5px 9px;border-radius:999px;background:var(--pri-soft);color:var(--pri);flex:none}
 .tag.ok{background:var(--green-soft);color:var(--green)}
 .tag.bad{background:var(--red-soft);color:var(--red)}
 .tag.soe{background:var(--red-soft);color:var(--red)}
 .tag.gray{background:#eef0f4;color:#6b7280}
 .jmeta{font-size:12px;color:var(--sub)}
-.jnote{font-size:13px;color:var(--txt);background:#fafbfc;border-radius:6px;padding:6px 8px;margin:2px 0 0}
+.jnote{font-size:13px;color:var(--txt);background:#f7f9fd;border:1px solid #eef1f8;border-radius:8px;padding:7px 10px;margin:2px 0 0}
 .jacts{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;align-items:center}
-.btn{appearance:none;border:0;cursor:pointer;padding:0 14px;height:36px;border-radius:8px;font-size:13px;font-weight:600;background:var(--card);color:var(--txt);font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:36px;transition:transform .05s,opacity .12s}
+/* ---------- 按钮 ---------- */
+.btn{appearance:none;border:0;cursor:pointer;padding:0 14px;height:36px;border-radius:10px;font-size:13px;font-weight:600;background:var(--card);color:var(--txt);font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:36px;transition:transform .08s,box-shadow .15s,filter .15s,background .15s}
 .btn:active{transform:translateY(1px)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
-.btn-sm{height:32px;padding:0 10px;font-size:12px;min-height:32px}
-.btn-pri{background:var(--pri);color:#fff}
-.btn-ghost{background:#fff;color:var(--pri);border:1px solid #c9dbfa}
-.btn-go{background:var(--green);color:#fff;border:1px solid var(--green)}
+.btn-sm{height:32px;padding:0 11px;font-size:12px;min-height:32px;border-radius:9px}
+.btn-pri{background:var(--grad);color:#fff;box-shadow:0 2px 10px rgba(59,91,253,.30)}
+.btn-pri:hover{filter:brightness(1.07)}
+.btn-ghost{background:#fff;color:var(--pri);border:1px solid #ccd8fb}
+.btn-ghost:hover{background:var(--pri-soft)}
+.btn-go{background:var(--grad-green);color:#fff;border:1px solid transparent;box-shadow:0 2px 8px rgba(10,157,108,.25)}
+.btn-go:hover{filter:brightness(1.06)}
 .btn-search{background:#fff;color:var(--sub);border:1px dashed #c3cad6}
-.btn-danger{background:#fff;color:var(--red);border:1px solid #f3c1c1}
+.btn-search:hover{color:var(--pri);border-color:#a9b6d8}
+.btn-danger{background:#fff;color:var(--red);border:1px solid var(--red-line)}
 .btn-gray{background:#f1f3f7;color:var(--sub);border:1px solid var(--line)}
-.btn-nav{background:#fff;color:var(--pri);border:1px solid #c9dbfa;height:48px;padding:0 18px;font-size:14px;display:flex;align-items:center;gap:8px;text-decoration:none;border-radius:12px}
-.btn-nav:hover{background:var(--pri-soft)}
+.btn-gray:hover{background:#e8ebf2}
+.btn-nav{background:#fff;color:var(--pri);border:1px solid #ccd8fb;height:52px;padding:0 18px;font-size:14px;display:flex;align-items:center;gap:8px;text-decoration:none;border-radius:14px;transition:background .15s,box-shadow .15s,transform .15s}
+.btn-nav:hover{background:var(--pri-soft);box-shadow:var(--shadow);transform:translateY(-1px)}
 .btn-nav .meta{font-size:11px;color:var(--sub);font-weight:normal;display:block;margin-top:2px}
-select{height:36px;border:1px solid var(--line);border-radius:8px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit}
-.moduleCards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
-.moduleCard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;text-decoration:none;color:var(--txt);display:flex;flex-direction:column;gap:6px;transition:transform .05s,box-shadow .12s}
-.moduleCard:hover{box-shadow:0 4px 12px rgba(16,24,40,.1)}
-.moduleCard .mh{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
+select{height:36px;border:1px solid var(--line);border-radius:10px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit;transition:border-color .15s,box-shadow .15s}
+/* ---------- 模块入口卡 ---------- */
+.moduleCards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0}
+.moduleCard{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;text-decoration:none;color:var(--txt);display:flex;flex-direction:column;gap:8px;transition:transform .15s,box-shadow .15s,border-color .15s;position:relative;overflow:hidden}
+.moduleCard::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad);opacity:0;transition:opacity .15s}
+.moduleCard:hover{transform:translateY(-3px);box-shadow:var(--shadow-hi);border-color:#d5dcea}
+.moduleCard:hover::after{opacity:1}
+.moduleCard .mh{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px}
+.moduleCard .mh svg{width:36px;height:36px;border-radius:10px;background:#f0f3fa;padding:8px;flex:none}
 .moduleCard svg{width:20px;height:20px}
-.moduleCard .mmeta{font-size:12px;color:var(--sub)}
-.moduleCard .mstat{font-size:11px;background:var(--pri-soft);color:var(--pri);border-radius:6px;padding:3px 8px;align-self:flex-start;font-weight:600}
+.moduleCard .mmeta{font-size:12px;color:var(--sub);line-height:1.5}
+.moduleCard .mstat{font-size:11px;background:var(--pri-soft);color:var(--pri);border-radius:999px;padding:3px 10px;align-self:flex-start;font-weight:700;margin-left:auto}
 .moduleCard.danger .mstat{background:var(--red-soft);color:var(--red)}
 .moduleCard.warn .mstat{background:var(--orange-soft);color:var(--orange)}
-.batchChips{display:flex;gap:6px;margin-bottom:8px}
-.chip{min-height:32px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--sub);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
-.chip.active{background:var(--pri);color:#fff;border-color:var(--pri)}
+/* ---------- chips/图例 ---------- */
+.batchChips{display:flex;gap:6px;margin-bottom:10px}
+.chip{min-height:32px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--sub);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.chip:hover{border-color:#c3cbe0;color:var(--txt)}
+.chip.active{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 2px 8px rgba(59,91,253,.3)}
 .legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;font-size:12px;color:var(--sub)}
 .legend span{display:flex;align-items:center;gap:6px}
-.legend .g{width:10px;height:10px;border-radius:3px;background:var(--green);display:inline-block}
+.legend .g{width:10px;height:10px;border-radius:3px;background:var(--grad-green);display:inline-block}
 .legend .s{width:10px;height:10px;border-radius:3px;border:1px dashed #c3cad6;display:inline-block;background:#fff}
-details.add{margin-bottom:10px;border:1px dashed var(--line);border-radius:10px;padding:0 12px;background:#fafbfc}
+/* ---------- 表单 ---------- */
+details.add{margin-bottom:10px;border:1px dashed #cdd5e6;border-radius:12px;padding:0 12px;background:#fafbfe}
 details.add summary{cursor:pointer;padding:10px 0;font-weight:600;font-size:13px;color:var(--sub);list-style:none}
 details.add[open] summary{padding-top:8px}
 details.add form{padding:8px 0}
 .formrow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
 .formrow>div,.fl{display:flex;flex-direction:column;gap:4px}
 .fl{font-size:12px;color:var(--sub);font-weight:600;margin-bottom:6px}
-input[type="text"],input[type="search"],input:not([type]){height:40px;border:1px solid var(--line);border-radius:8px;padding:0 10px;background:#fff;font-size:14px;font-family:inherit}
-textarea{width:100%;min-height:64px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px;font-family:inherit;resize:vertical}
-input[type="date"]{height:40px;border:1px solid var(--line);border-radius:8px;padding:0 10px;font-size:14px}
+input[type="text"],input[type="search"],input:not([type]){height:40px;border:1px solid var(--line);border-radius:10px;padding:0 12px;background:#fff;font-size:14px;font-family:inherit;transition:border-color .15s,box-shadow .15s}
+textarea{width:100%;min-height:64px;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:14px;font-family:inherit;resize:vertical;transition:border-color .15s,box-shadow .15s}
+input[type="date"]{height:40px;border:1px solid var(--line);border-radius:10px;padding:0 10px;font-size:14px;font-family:inherit;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri);box-shadow:0 0 0 3px rgba(59,91,253,.13)}
 label.fl{display:block;margin:6px 0 0}
 .mtail{font-size:11px;color:var(--sub);text-align:center;margin-top:4px}
 .navSpacer{height:8px}
+/* ---------- 公司情报面板 ---------- */
+.intel-card{background:#fff;border-radius:18px;max-width:560px;width:100%;max-height:82vh;overflow:auto;padding:20px;box-shadow:0 24px 60px rgba(15,23,42,.25);animation:pop .18s ease}
+.intel-head{display:flex;align-items:flex-start;gap:10px}
+.intel-head b{font-size:17px;display:block}
+.intel-head p{font-size:12px;color:var(--sub);margin:2px 0 0}
+.intel-head .iclose{margin-left:auto;border:0;background:#f1f3f7;width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:13px;color:var(--sub);flex:none}
+.intel-head .iclose:hover{background:#e6e9f0;color:var(--txt)}
+.isec{font-size:12px;font-weight:700;color:var(--pri);margin:16px 0 8px;display:flex;align-items:center;gap:8px}
+.isec::after{content:'';flex:1;height:1px;background:var(--line)}
+.iitem{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin-bottom:6px;background:#fafbfe;transition:box-shadow .15s,border-color .15s}
+.iitem:hover{box-shadow:var(--shadow);border-color:#d5dcea}
+.iitem .iinfo{flex:1;min-width:0}
+.iitem .iinfo b{font-size:14px;display:block}
+.iitem .iinfo span{font-size:12px;color:var(--sub)}
+/* ---------- 日常实习直通车 ---------- */
+.xgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.xcard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 15px;display:flex;flex-direction:column;gap:6px;transition:box-shadow .18s,transform .18s,border-color .18s}
+.xcard:hover{box-shadow:var(--shadow-hi);transform:translateY(-2px);border-color:#f0d9ae}
+.xhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.xhead b{font-size:15px;flex:none}
+/* ---------- 弹层 ---------- */
+#lnkModal .lnk-card{background:#fff;border-radius:18px;max-width:520px;width:100%;padding:20px;box-shadow:0 24px 60px rgba(15,23,42,.25);animation:pop .18s ease}
+@keyframes pop{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}
 @media (max-width:768px){
   .stats,.grid,.moduleCards,.formrow{grid-template-columns:1fr}
   nav.tabbar .inner{padding:8px 12px}
   nav.tabbar .sync{font-size:11px;padding:4px 8px}
   .wrap{padding:0 12px 60px}
+  .hero{padding:0 12px}
+  .hero .hero-in{padding:16px 18px}
+  .hero h1{font-size:18px}
+  .hero .hero-ic{width:38px;height:38px}
+  .stat b{font-size:24px}
+  .xgrid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -128,11 +214,17 @@ label.fl{display:block;margin:6px 0 0}
   </div>
 </nav>
 
+<div class="hero amber"><div class="hero-in"><div class="hero-txt"><h1>日常实习直通车</h1><p>15 家官方实习通道一键直达，牛客实习批次每日自动同步，秋招批次绝不混入</p></div><svg class="hero-ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></div></div>
 <div class="wrap">
 <div class="banner" id="offBanner">离线模式：未连接到在线数据表，数据读写暂不可用。请通过资料库链接打开本页面。</div>
+<section>
+  <h2 style="color:var(--orange)"><svg viewBox="0 0 24 24" fill="none" stroke="#e58f0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>日常实习直通车 · 27届官方通道<span class="cnt">15 家</span></h2>
+  <div class="jmeta" style="margin-bottom:10px">BOSS / 实习僧反爬无法自动抓取，日常实习最靠谱的入口是<b>各家官方实习招聘页</b>：点「直达实习官网」→ 页面内筛选「实习生 / 日常实习」+ 目标城市，一步到位。想了解公司先点「公司情报」看面经和评价。</div>
+  <div class="xgrid"><div class="xcard"><div class="xhead"><b>字节跳动</b><span class="tag">AI·大模型·后端·算法</span></div><div class="jmeta">重点城市：北京、成都 ｜ 进入官网后筛选「实习生 / 日常实习」+ 城市</div><div class="jacts"><button class="btn btn-go btn-sm xgo" data-u="https://jobs.bytedance.com/campus/position?keywords=&category=&location=">直达实习官网</button><button class="btn btn-search btn-sm xintel" data-c="字节跳动">公司情报</button></div></div><div class="xcard"><div class="xhead"><b>腾讯</b><span class="tag">技术·算法·产品</span></div><div class="jmeta">重点城市：北京、成都 ｜ 进入官网后筛选「实习生 / 日常实习」+ 城市</div><div class="jacts"><button class="btn btn-go btn-sm xgo" data-u="https://careers.tencent.com/zh-CN/campusDiscover">直达实习官网</button><button class="btn btn-search btn-sm xintel" data-c="腾讯">公司情报</button></div></div><div class="xcard"><div class="xhead"><b>阿里巴巴</b><span class="tag">技术·算法·数据</span></div><div class="jmeta">重点城市：北京、杭州 ｜ 进入官网后筛选「实习生 / 日常实习」+ 城市</div><div class="jacts"><button class="btn btn-go btn-sm xgo" data-u="https://talent.alibaba.com/campus/position-list">直达实习官网</button><button class="btn btn-search btn-sm xintel" data-c="阿里巴巴">公司情报</button></div></div><div class="xcard"><div class="xhead"><b>百度</b><span class="tag">AI·大模型·技术</span></div><div class="jmeta">重点城市：北京 ｜ 进入官网后筛选「实习生 / 日常实习」+ 城市</div><div class="jacts"><button class="btn btn-go btn-sm xgo" data-u="https://talent.baidu.com/jobs/campus-list">直达实习官网</button><button class="btn btn-search btn-sm xintel" data-c="百度">公司情报</button></div></div><div class="xcard"><div class="xhead"><b>美团</b><span class="tag">算法·后端·数据</span></div><div class="jmeta">重点城市：北京 ｜ 进入官网后筛选「实习生 / 日常实习」+ 城市</div><div class="jacts"><button class="btn btn-go btn-sm xgo" data-u="https://zhaopin.meituan.com/web/campus">直达实习官网</button><button class="btn btn-search btn-sm xintel" data-c="美团">公司情报</button></div></div><div class="xcard"><div class="xhead"><b>京东</b><span class="tag">技术·算法</span></div><div class="jmeta">重点城市：北京、成都 ｜ 进入官网后筛选「实习生 / 日常实习」+ 城市</div><div class="jacts"><button class="btn btn-go btn-sm xgo" data-u="https://zhaopin.jd.com">直达实习官网</button><button class="btn btn-search btn-sm xintel" data-c="京东">公司情报</button></div></div><div class="xcard"><div class="xhead"><b>网易</b><span class="tag">技术·游戏·算法</span></div><div class="jmeta">重点城市：杭州、北京 ｜ 进入官网后筛选「实习生 / 日常实习」+ 城市</div><div class="jacts"><button class="btn btn-go btn-sm xgo" data-u="https://campus.163.com">直达实习官网</button><button class="btn btn-search btn-sm xintel" data-c="网易">公司情报</button></div></div><div class="xcard"><div class="xhead"><b>华为</b><span class="tag">研发·AI·云计算</span></div><div class="jmeta">重点城市：成都、北京 ｜ 进入官网后筛选「实习生 / 日常实习」+ 城市</div><div class="jacts"><button class="btn btn-go btn-sm xgo" data-u="https://career.huawei.com/reccampportal/portal5/campus-recruitment.html">直达实习官网</button><button class="btn btn-search btn-sm xintel" data-c="华为">公司情报</button></div></div><div class="xcard"><div class="xhead"><b>小米</b><span class="tag">技术·AIoT·算法</span></div><div class="jmeta">重点城市：北京 ｜ 进入官网后筛选「实习生 / 日常实习」+ 城市</div><div class="jacts"><button class="btn btn-go btn-sm xgo" data-u="https://hr.xiaomi.com/campus">直达实习官网</button><button class="btn btn-search btn-sm xintel" data-c="小米">公司情报</button></div></div><div class="xcard"><div class="xhead"><b>大疆</b><span class="tag">嵌入式·算法·软件</span></div><div class="jmeta">重点城市：深圳、北京 ｜ 进入官网后筛选「实习生 / 日常实习」+ 城市</div><div class="jacts"><button class="btn btn-go btn-sm xgo" data-u="https://we.dji.com/zh-CN/campus">直达实习官网</button><button class="btn btn-search btn-sm xintel" data-c="大疆">公司情报</button></div></div><div class="xcard"><div class="xhead"><b>科大讯飞</b><span class="tag">AI·语音·大模型</span></div><div class="jmeta">重点城市：成都、合肥 ｜ 进入官网后筛选「实习生 / 日常实习」+ 城市</div><div class="jacts"><button class="btn btn-go btn-sm xgo" data-u="https://campus.iflytek.com">直达实习官网</button><button class="btn btn-search btn-sm xintel" data-c="科大讯飞">公司情报</button></div></div><div class="xcard"><div class="xhead"><b>商汤科技</b><span class="tag">CV·大模型·算法</span></div><div class="jmeta">重点城市：北京、上海 ｜ 进入官网后筛选「实习生 / 日常实习」+ 城市</div><div class="jacts"><button class="btn btn-go btn-sm xgo" data-u="https://www.sensetime.com/cn/careers">直达实习官网</button><button class="btn btn-search btn-sm xintel" data-c="商汤科技">公司情报</button></div></div><div class="xcard"><div class="xhead"><b>OPPO</b><span class="tag">软件·算法</span></div><div class="jmeta">重点城市：成都、深圳 ｜ 进入官网后筛选「实习生 / 日常实习」+ 城市</div><div class="jacts"><button class="btn btn-go btn-sm xgo" data-u="https://campus.oppo.com">直达实习官网</button><button class="btn btn-search btn-sm xintel" data-c="OPPO">公司情报</button></div></div><div class="xcard"><div class="xhead"><b>NVIDIA 英伟达</b><span class="tag">GPU·AI·深度学习</span></div><div class="jmeta">重点城市：北京、上海 ｜ 进入官网后筛选「实习生 / 日常实习」+ 城市</div><div class="jacts"><button class="btn btn-go btn-sm xgo" data-u="https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite">直达实习官网</button><button class="btn btn-search btn-sm xintel" data-c="NVIDIA 英伟达">公司情报</button></div></div><div class="xcard"><div class="xhead"><b>微软</b><span class="tag">研发·AI·云</span></div><div class="jmeta">重点城市：北京 ｜ 进入官网后筛选「实习生 / 日常实习」+ 城市</div><div class="jacts"><button class="btn btn-go btn-sm xgo" data-u="https://careers.microsoft.com/v2/global/en/home.html">直达实习官网</button><button class="btn btn-search btn-sm xintel" data-c="微软">公司情报</button></div></div></div>
+</section>
 
 <section>
-  <h2 style="color:var(--orange)"><svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>成都实习 · 专栏<span class="cnt" id="jobCnt" data-sp-bindable="database" data-sp-database-id="tgH8096uENTaIj8RSY9qm5"></span></h2>
+  <h2 style="color:var(--orange)"><svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>实习批次同步 · 专栏<span class="cnt" id="jobCnt" data-sp-bindable="database" data-sp-database-id="tgH8096uENTaIj8RSY9qm5"></span></h2>
   <div class="jmeta" style="margin-bottom:10px">BOSS 直聘有反爬无法自动抓取：在 BOSS 上看到合适的岗位，<b>复制岗位链接</b>点下方「添加实习岗位」一键收录；牛客的成都实习批次由每日自动化同步进本表</div>
   <details class="add" open><summary>添加实习岗位（从 BOSS 直聘复制）</summary>
     <form id="internForm">
@@ -165,21 +257,33 @@ label.fl{display:block;margin:6px 0 0}
     <div class="jmeta">薪资：<span data-field="薪资"></span> ｜ 地点：<span data-field="工作地点"></span> ｜ <span data-field="岗位要求"></span></div>
     <div class="jnote" data-field="备注"></div>
     <div class="jmeta">来源：<span data-field="来源"></span></div>
-    <div class="jacts"><a class="btn btn-ghost btn-sm" data-field="投递链接" target="_blank" rel="noopener">投递</a><button class="btn btn-search btn-sm jsearch">搜公司</button><select class="jstatus"></select><button class="btn btn-gray btn-sm jdel">删除</button></div>
+    <div class="jacts"><a class="btn btn-ghost btn-sm" data-field="投递链接" target="_blank" rel="noopener">投递</a><button class="btn btn-search btn-sm jsearch">公司情报</button><select class="jstatus"></select><button class="btn btn-gray btn-sm jdel">删除</button></div>
   </div>
 </div>
 
 </div>
 
-<div id="lnkModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:99;align-items:center;justify-content:center;padding:20px">
-  <div style="background:#fff;border-radius:14px;max-width:520px;width:100%;padding:18px;box-shadow:0 10px 30px rgba(15,23,42,.2)">
+<div id="lnkModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:99;align-items:center;justify-content:center;padding:20px">
+  <div class="lnk-card" style="background:#fff;border-radius:18px;max-width:520px;width:100%;padding:20px">
     <b style="font-size:15px">浏览器拦截了新窗口，复制链接去打开</b>
-    <p id="lnkTxt" style="word-break:break-all;background:#f7f9fc;border-radius:8px;padding:10px;margin:10px 0;font-size:13px;color:var(--pri)"></p>
-    <p style="font-size:12px;color:var(--sub);margin:-4px 0 10px">手机端可长按上方链接选择复制，再粘贴到浏览器打开</p>
+    <p id="lnkTxt" style="word-break:break-all;background:#f4f6fb;border:1px solid #e6eaf2;border-radius:10px;padding:11px;margin:12px 0 6px;font-size:13px;color:var(--pri);font-weight:500"></p>
+    <p style="font-size:12px;color:var(--sub);margin:0 0 12px">手机端可长按上方链接选择复制，再粘贴到浏览器打开</p>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-gray btn-sm" id="lnkClose">关闭</button>
       <button class="btn btn-pri btn-sm" id="lnkCopy">复制链接</button>
     </div>
+  </div>
+</div>
+
+
+<div id="intelModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:98;align-items:center;justify-content:center;padding:20px">
+  <div class="intel-card">
+    <div class="intel-head">
+      <div><b id="intelName">公司情报</b><p>投递前先看：面经经验、公司背景、薪资评价</p></div>
+      <button class="iclose" id="intelClose">✕</button>
+    </div>
+    <div id="intelBody"></div>
+    <p style="font-size:11px;color:var(--sub);text-align:center;margin-top:14px">各条目在新窗口打开 · 沙箱内被拦截时会出现复制链接弹层</p>
   </div>
 </div>
 
@@ -199,7 +303,7 @@ function $(id){return document.getElementById(id)}
 function esc(s){return String(s==null?'':s).replace(/[&<>""]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function dayStr(d){var p=function(n){return (n<10?'0':'')+n};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())}
 function today(){return dayStr(new Date())}
-// 日期字段可能以字符串 'YYYY-MM-DD'、对象 date/text/value 字段、或 Date 形式出现，全部兼容
+// 日期字段可能是字符串、对象（date/text/value/start 字段）或 Date，统一取出前 10 位
 function dOnly(v){if(v==null)return '';if(typeof v==='object'){v=v.date||v.text||v.value||v.start||''}return String(v).slice(0,10)}
 function diffDays(a,b){if(!a||!b)return null;return Math.round((Date.parse(b)-Date.parse(a))/86400000)}
 function optId(field,text){var l=OPTS[field]||[];for(var i=0;i<l.length;i++){if(l[i].text===text)return l[i].id}return text}
@@ -219,6 +323,60 @@ function showLinkModal(link){var m=$('lnkModal');if(!m){alert('投递链接：'+
 function openLink(link){if(!link){alert('这条记录没有填链接');return}var w=null;try{w=window.open(link,'_blank')}catch(e){}if(!w)showLinkModal(link);}
 function jobLink(j){return urlVal(j['投递链接']).link}
 function jobJump(j){var l=jobLink(j);var c=j['公司']||'';return l||searchUrl(c)||webSearchUrl(c)}
+
+/* ---------- 公司情报面板 ---------- */
+function intelLinks(c){
+  var e=encodeURIComponent;
+  return [
+    {sec:'面经与入职经验',items:[
+      {t:'牛客 · 面经搜索',d:'笔试真题、面试流程、通过率、入职体验帖',u:'https://www.nowcoder.com/search/all?query='+e(c+' 面经')},
+      {t:'牛客 · 公司讨论区',d:'薪资爆料、offer 对比、加班情况',u:'https://www.nowcoder.com/search/all?query='+e(c+' 公司')},
+      {t:'全网经验帖聚合',d:'知乎/博客的面经与校招经验搜索',u:'https://www.bing.com/search?q='+e(c+' 校招 面经 入职体验')}
+    ]},
+    {sec:'公司背景',items:[
+      {t:'百度百科',d:'主营业务、规模、母公司背景',u:'https://baike.baidu.com/item/'+e(c)},
+      {t:'爱企查 · 工商信息',d:'股权结构、注册信息、是否国企/经营风险',u:'https://aiqicha.baidu.com/s?q='+e(c)},
+      {t:'官方网站',d:'找官方招聘频道与业务线介绍',u:'https://www.bing.com/search?q='+e(c+' 官网 招聘')}
+    ]},
+    {sec:'薪资与评价',items:[
+      {t:'看准网',d:'员工评价、面试题库、薪资爆料',u:'https://www.kanzhun.com/search/?query='+e(c)},
+      {t:'职友集',d:'薪资统计、招聘趋势、公司排行',u:'https://www.jobui.com/search/?keyword='+e(c)}
+    ]}
+  ];
+}
+function showIntel(company){
+  var c=(company||'').trim()||'未命名公司';
+  var m=$('intelModal');
+  if(!m){openLink(webSearchUrl(c));return}
+  $('intelName').textContent=c+' · 公司情报';
+  var html='';
+  intelLinks(c).forEach(function(g){
+    html+='<div class="isec">'+g.sec+'</div>';
+    g.items.forEach(function(it){
+      html+='<div class="iitem"><div class="iinfo"><b>'+it.t+'</b><span>'+it.d+'</span></div>'
+           +'<button class="btn btn-pri btn-sm igoto" data-u="'+it.u.replace(/"/g,'&quot;')+'">打开</button></div>';
+    });
+  });
+  $('intelBody').innerHTML=html;
+  Array.prototype.forEach.call($('intelBody').querySelectorAll('.igoto'),function(b){
+    b.addEventListener('click',function(){openLink(b.getAttribute('data-u'))});
+  });
+  m.style.display='flex';
+}
+function bindIntelClose(){
+  var m=$('intelModal');if(!m)return;
+  $('intelClose').addEventListener('click',function(){m.style.display='none'});
+  m.addEventListener('click',function(e){if(e.target===m)m.style.display='none'});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')m.style.display='none'});
+}
+function bindExpress(){
+  Array.prototype.forEach.call(document.querySelectorAll('.xgo'),function(b){
+    b.addEventListener('click',function(){openLink(b.getAttribute('data-u'))});
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.xintel'),function(b){
+    b.addEventListener('click',function(){showIntel(b.getAttribute('data-c'))});
+  });
+}
 
 function setFieldText(root,name,val,dbid){var el=root.querySelector('[data-field="'+name+'"]');if(!el)return;if(name==='投递链接'||name==='相关链接'){var u=urlVal(val);el.style.display='';if(u.link){el.className=name==='投递链接'?'btn btn-go btn-sm':'btn btn-ghost btn-sm';el.textContent=name==='投递链接'?'直达官网':'链接';el.setAttribute('href',u.link)}else{el.className='btn btn-search btn-sm';el.textContent=name==='投递链接'?'搜索网申入口':'搜索进度';el.removeAttribute('href')}}else{el.textContent=val==null?'':String(val)}el.setAttribute('data-sp-bindable','database');el.setAttribute('data-sp-database-id',dbid)}
 function setText(id,v){var el=$(id);if(el)el.textContent=v}
@@ -259,8 +417,8 @@ function buildInternCard(i){
   var st=jobStatus(i);
   setFieldText(card,'公司',i['公司'],INTERN_ID);setFieldText(card,'岗位名称',i['岗位名称'],INTERN_ID);setFieldText(card,'薪资',i['薪资'],INTERN_ID);setFieldText(card,'工作地点',i['工作地点'],INTERN_ID);setFieldText(card,'岗位要求',i['岗位要求'],INTERN_ID);setFieldText(card,'备注',i['备注'],INTERN_ID);setFieldText(card,'来源',i['来源'],INTERN_ID);
   var stEl=card.querySelector('[data-field="投递状态"]');if(st==='已投递')stEl.className='tag ok';else if(st==='不投了')stEl.className='tag gray';
-  card.querySelector('[data-field="投递链接"]').addEventListener('click',function(e){e.preventDefault();openLink(urlVal(i['投递链接']).link||webSearchUrl(fieldText(i,'公司')+' 成都 实习 招聘'))});
-  card.querySelector('.jsearch').addEventListener('click',function(){openLink(webSearchUrl(fieldText(i,'公司')+' 成都 实习 招聘'))});
+  card.querySelector('[data-field="投递链接"]').addEventListener('click',function(e){e.preventDefault();var l=urlVal(i['投递链接']).link;if(l){openLink(l)}else{showIntel(fieldText(i,'公司'))}});
+  card.querySelector('.jsearch').addEventListener('click',function(){showIntel(fieldText(i,'公司'))});
   var jst=card.querySelector('.jstatus');jst.innerHTML='';
   (OPTS['投递状态']||[]).forEach(function(o){var op=document.createElement('option');op.value=o.text;op.textContent=o.text;jst.appendChild(op)});jst.value=st;
   jst.addEventListener('change',function(){if(!jst.value||jst.value===st){jst.value=st;return}jst.disabled=true;db.updateRecord({databaseId:'tgH8096uENTaIj8RSY9qm5',recordId:recId(i),properties:{'投递状态':{select:jst.value}}}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:',e);jst.disabled=false})});
@@ -286,6 +444,8 @@ function fillSelect(selId,field,withAll){var sel=$(selId);if(!sel)return;sel.inn
 function renderSelectOptions(){fillSelect('fSt','投递状态',true);}
 function init(){
   db=window.__SMART_PAGE__&&window.__SMART_PAGE__.database;
+  bindIntelClose();
+  bindExpress();
   if(!db){goOffline();return}
   setText('syncTxt','已同步');bindSubmitIntern();
   bindFormCache('internForm');

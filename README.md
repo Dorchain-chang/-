@@ -4,27 +4,30 @@
 
 ## 这是什么
 
-这是为求职季（秋招/实习）量身打造的**多页面工作台**，核心目标是**不让用户在同一个长页面里上下滚动找东西**。
+这是为求职季（秋招/实习）量身打造的**单文件工作台**，核心目标是**不让用户在同一个长页面里上下滚动找东西**。
 
 工作台使用 [腾讯文档·资料库](https://docs.qq.com) 的「在线 page」+「数据表」能力部署，数据云端同步、多设备共享。
 
-**在线 demo（不需要登录，数据只存在你自己的浏览器里）**：<https://dou-chang.github.io/qiuzhao-workbench/>
+**在线 demo（不需要登录，数据只存在你自己的浏览器里）**：<https://dorchain-chang.github.io/-/>
 
-## 4 个独立页面
+## 单文件应用 + 页内 Tab 切换
 
-按功能拆分为 4 个独立节点，避免滚动：
+整个工作台是**一个 HTML 文件**，用页内 Tab 在 4 个模块之间切换：不跳转、不滚动找模块，三张表的数据也只加载一次。
 
-| 页面 | 用途 | 进入方式 |
-|------|------|----------|
-| **总览台** | 统一管理 / 今天要处理 / 投递跟踪 / 4 模块入口 | 一打开就能看到全局 |
-| **秋招岗位** | 互联网/科技/制造业等非央国企岗位（按 城市/职业/批次 筛选） | 想看具体岗位就进这个 |
-| **央国企** | 央企/银行/运营商/电网/烟草等，按公司名关键词自动识别+红色卡片 | 只看央国企进这个 |
-| **成都实习** | 实习岗位专区，BOSS 直聘手动收录+牛客每日同步 | 实习和秋招分开管理 |
+| 模块 | 用途 |
+|------|------|
+| **总览台** | 统一管理 / 今天要处理 / 投递跟踪 / 模块入口 |
+| **秋招岗位** | 互联网/科技/制造业等非央国企岗位（按 城市/职业/批次 筛选） |
+| **央国企** | 央企/银行/运营商/电网/烟草等，按公司名关键词自动识别 + 红色卡片 |
+| **成都实习** | 实习岗位专区，BOSS 直聘手动收录 + 牛客每日同步 |
+
+> 演进历史：最早是 4 个独立节点互相跳转，后来合并为单文件应用——跨节点跳转会让 SDK 重新初始化、数据重新拉取，体验反而更差。
+> `pages/01~03` 仍保留各模块的**独立版**，方便单独引用或回退。
 
 ## 核心功能
 
-- **「今天要处理」自动汇总**：逾期岗位（红）/ 3 天内截止（橙）/ 今天的面试节点（蓝），不打开任何子页就能看到今天该做什么
-- **分类清晰**：秋招/实习 一键 chip 切换；央国企/其他企业 自动分流到两个独立页面
+- **「今天要处理」自动汇总**：逾期岗位（红）/ 3 天内截止（橙）/ 今天的面试节点（蓝），不切换 Tab 就能看到今天该做什么
+- **分类清晰**：秋招/实习 一键 chip 切换；央国企/其他企业 自动分流到「央国企」和「秋招岗位」两个 Tab
 - **直达 vs 搜索**：有网申链接 → 绿色按钮直达；没链接 → 灰色虚线按钮（自动跳牛客/必应搜索）
 - **投一个存一个**：岗位看板点「标已投」会自动在投递跟踪表建一条记录（按公司去重）
 - **每日自动同步**：每天 9:00 自动抓牛客校招日程（含 AI/算法/数据 等方向）的有效期内岗位，补齐到岗位清单表
@@ -54,42 +57,43 @@
 ```
 .
 ├── README.md                      # 本文件
-├── pages/                         # 4 个生产页面（运行在资料库内）
-│   ├── 00-总览台.html             #   · 统一管理 + 跟踪 + 模块入口
-│   ├── 01-秋招岗位台.html         #   · 非央国企岗位看板
-│   ├── 02-央国企台.html           #   · 央国企专栏
-│   ├── 03-成都实习台.html         #   · 成都实习专区
-│   ├── build_pages.py             #   · 用同一脚本生成 4 个页面（来源单一改完即可）
-│   └── build_demo.py              #   · 给生产页套一层 localStorage mock 生成 demo/
-├── demo/                          # GitHub Pages 用，零依赖可独立部署
-│   ├── index.html                 #   · 同"00-总览台"但使用 mock 数据 + localStorage
-│   ├── autumn.html
-│   ├── soe.html
-│   └── intern.html
+├── HANDOVER.md                    # 交接文档（坑 / schema / 待办）
+├── PUSH_TO_GITHUB.md              # 发布与 CI 说明
+├── canonical_schema.json          # 构建输入：字段 + 选项（build_pages.py 依赖，别删）
+├── schema_union.json              # 构建输入：三张表的 schema 快照
+├── pages/                         # 生产页 + 全部构建脚本
+│   ├── 00-总览台.html             #   · build_single.py 产出的合并版单文件应用
+│   ├── 01-秋招岗位台.html         #   · 独立版：非央国企岗位看板
+│   ├── 02-央国企台.html           #   · 独立版：央国企专栏
+│   ├── 03-成都实习台.html         #   · 独立版：成都实习专区
+│   ├── build_pages.py             #   · ① 生成 4 个独立模块页
+│   ├── build_single.py            #   · ② 合并成单文件应用
+│   ├── build_demo.py              #   · ③ 套 localStorage mock 生成 demo/
+│   ├── sync_interns.py            #   · 牛客校招日程 → 实习表 同步脚本
+│   └── deploy_pages.py            #   · 推到腾讯文档·资料库节点
+├── demo/                          # GitHub Pages 站点，零依赖
+│   └── index.html                 #   · 合并版应用 + mock 数据
 ├── docs/
 │   └── DEPLOY.md                  # 部署到腾讯文档·资料库的步骤
 └── .github/workflows/
     ├── deploy-demo.yml            # push 后自动构建 demo/ 并部署到 GitHub Pages
-    └── lint.yml                   # 内联 JS 语法检查 + demo 自包含 + 产物一致性
+    └── lint.yml                   # 语法 + 自包含 + 合并版标记 + 产物一致性
 ```
 
 ## 改代码后必做
 
-`pages/*.html` 和 `demo/*.html` **都是生成出来的**，改它们没用，下次跑脚本会被覆盖：
+`pages/*.html` 和 `demo/index.html` **都是生成出来的**，手改它们下次生成就被覆盖。三步顺序不能乱：
 
 ```bash
-python pages/build_pages.py    # 生成 pages/*.html
-python pages/build_demo.py     # 生成 demo/*.html
+python pages/build_pages.py    # ① 4 个独立模块页 -> pages/00~03
+python pages/build_single.py   # ② 合并成单文件应用 -> pages/00-总览台.html（覆盖 ① 的 00）
+python pages/build_demo.py     # ③ 套 mock -> demo/index.html
 ```
 
-只想再导出一份到上级目录方便往资料库导入：
+`build_single.py` 要读 `build_pages.py` 的产物，`build_demo.py` 要读 `build_single.py` 的产物，漏一步 demo 就还是旧的。
+（`build_pages.py` / `build_single.py` 还会在仓库根目录顺手存一份，那是本地产物，已被 `.gitignore` 忽略。）
 
-```bash
-QIUZHAO_EXPORT_ROOT=1 python pages/build_pages.py
-```
-
-CI（`.github/workflows/lint.yml`）会重新跑这两个脚本并检查 `git diff`，
-忘记生成/忘记提交会被判红。
+CI（`.github/workflows/lint.yml`）会重新跑这三步并检查 `git diff`，忘记生成/忘记提交会被判红。
 
 ## 本地预览
 
@@ -108,10 +112,10 @@ demo 顶部有黄色横幅提示「演示模式」，数据存在浏览器 local
 
 参见 `docs/DEPLOY.md`。简要步骤：
 
-1. 创建 3 张数据表（字段见上文）
-2. 改 `pages/*.html` 中的 `JOBS_ID / APPS_ID / INTERN_ID` 常量为你的实际 ID
-3. 把每个 HTML 用资料库的「导入 HTML」接口上传到一个独立节点
-4. 在 4 个页面之间通过 `target="_top"` 链接互跳
+1. 创建 3 张数据表（字段见上文），把字段/选项写进 `canonical_schema.json`
+2. 确认 `pages/build_pages.py` 里的 `JOBS_ID / APPS_ID / INTERN_ID` 是你的实际节点 ID
+3. 跑上面三步生成产物
+4. 用 `python pages/deploy_pages.py` 把页面推到资料库节点（或手动走「导入 HTML」）
 
 ## License
 

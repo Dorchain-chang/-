@@ -3,9 +3,16 @@ __pycache__/
 .DS_Store
 node_modules/
 
-# 构建产物（由 pages/build_pages.py 生成，不入库）
+# 构建产物（由 pages/*.py 生成，不入库）
 pages/canonical_*.json
 _site/
+
+# build_pages.py / build_single.py 会顺便在仓库根目录再存一份，方便往资料库导入。
+# 真正的产物在 pages/ 和 demo/ 里，根目录这几份是本地产物，不入库。
+/00-总览台.html
+/01-秋招岗位台.html
+/02-央国企台.html
+/03-成都实习台.html
 
 # 本地环境
 .env

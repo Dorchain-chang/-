@@ -1,107 +1,128 @@
-# 上传到 GitHub（手动步骤）
+# 发布到 GitHub（现状 + 日常流程）
 
-本项目使用 git 命令行工具上传，需要你已经：
-1. 注册 GitHub 账号
-2. 在 [github.com/new](https://github.com/new) 创建一个空仓库（建议名 `qiuzhao-workbench`，**不勾选** Add README / .gitignore / LICENSE 等任何文件）
-3. 在本机配置好 SSH key 或 HTTPS token
+## 现状：已经上线了
 
-## 步骤
+| 项目 | 地址 |
+|------|------|
+| 仓库 | <https://github.com/Dorchain-chang/-> |
+| 在线 demo | <https://dorchain-chang.github.io/-/> |
+| 默认分支 | `main` |
+| Pages 来源 | GitHub Actions（`deploy-demo.yml`） |
+
+本地仓库的 `origin` 已经配好，直接 `git push` 即可，不需要再 `git remote add`：
 
 ```bash
-# 1. 进入已初始化的本地仓库
 cd "D:\workbudd 默认日志\2026-09-12-21-20-24\github_repo"
-
-# 2. 添加远程仓库（dou-chang 已设为默认用户名，换成你自己的）
-git remote add origin https://github.com/dou-chang/qiuzhao-workbench.git
-
-# 3. 推送
-git push -u origin main
+git remote -v
+# origin  https://github.com/Dorchain-chang/-.git (fetch)
+# origin  https://github.com/Dorchain-chang/-.git (push)
 ```
 
-之后每次改代码：
+认证走 Windows 的 Git Credential Manager，凭据已经存在系统里，所以 push 不会再问密码。
+
+> 注意：`origin` 用的是 **HTTPS**，不是 SSH。
+> 这台机器上 Git 自带的 ssh 会报 `Host key verification failed`，而系统 OpenSSH 又没配 key，
+> 所以别把 remote 换成 `git@github.com:...`，除非你先在 GitHub 后台加好公钥。
+
+## 日常流程（**三步生成 + 一次推送**）
+
+`pages/*.html` 和 `demo/index.html` **都是生成出来的**，手改它们下次生成就被覆盖。
+正确顺序是：
 
 ```bash
-# 改了生成脚本的话，先重新生成页面（只改 HTML 是无效的）
-python pages/build_pages.py
-python pages/build_demo.py
+python pages/build_pages.py    # ① 4 个独立模块页 -> pages/00~03
+python pages/build_single.py   # ② 合并成单文件应用 -> pages/00-总览台.html（覆盖 ① 的 00）
+python pages/build_demo.py     # ③ 加 localStorage mock -> demo/index.html
 
 git add -A
 git commit -m "feat: 描述你的改动"
 git push
 ```
 
-## 启用 GitHub Pages 演示版
+**为什么必须按这个顺序**：`build_single.py` 会读取 `build_pages.py` 生成的 4 个页面来合并；
+`build_demo.py` 读取的是 `build_single.py` 的产物。漏掉中间一步，demo 就还是旧的。
 
-仓库里已经有 `.github/workflows/deploy-demo.yml`，**push 之后会自动部署**，只需要开启一次：
+`build_pages.py` / `build_single.py` 还会在仓库根目录再存一份 `00~03-*.html`，
+那是方便往资料库导入的本地产物，已经在 `.gitignore` 里，不会进版本库。
 
-1. 进入 GitHub 仓库页面 → **Settings** → **Pages**
-2. **Source** 选 **GitHub Actions**（不是 "Deploy from a branch"）
-3. 之后每次 push 到 `main`，Actions 会自动把 `demo/` 构建成站点并发布
-4. 访问地址：`https://dou-chang.github.io/qiuzhao-workbench/`
+## GitHub Pages 是怎么部署的
 
-说明：
-- 工作流会把 `demo/*.html` 复制到 `_site/` 再上传，**站点根就是 demo 本身**，所以地址里没有 `/demo/` 后缀
-- 不需要手动加 `.nojekyll`（工作流里已经 `touch _site/.nojekyll`）
+`.github/workflows/deploy-demo.yml`：push 到 `main` 后自动执行
+
+1. 把 `demo/*.html` 复制到 `_site/`
+2. `touch _site/.nojekyll`（避免 Jekyll 处理）
+3. 上传 `_site` 并发布
+
+要点：
+- **站点根就是 demo 本身**，所以地址是 `https://dorchain-chang.github.io/-/`，没有 `/demo/` 后缀
+- 不要把整个仓库当站点根上传，否则 `.github/`、`pages/` 会被公网访问到
 - 想手动重跑：仓库 → **Actions** → `Deploy demo to GitHub Pages` → **Run workflow**
 
-同时 `.github/workflows/lint.yml` 会在每次 push 检查：
-- 8 个 HTML 的内联 JS 语法
-- demo 页面里没有残留生产环境（资料库）链接
-- `pages/` `demo/` 的生成产物和生成脚本一致（忘了跑脚本会红）
+## CI 会检查什么（lint.yml）
 
-## HTTPS 认证出错？
+每次 push / PR 都会跑，红了就说明有问题：
 
-如果你推送时报错 `Permission denied` 或 `Authentication failed`，说明本地 git 没配置好远端凭证。两种解决方案：
+1. `pages/*.html` + `demo/*.html` 的内联 JS 语法（`node --check`）
+2. demo 里有 `DEMO MODE ADAPTER` 适配层，且**没有**残留 `workbuddy.cn/space/d/` 生产链接
+3. 生产页保留了真实的 `databaseId` 字面量
+4. `pages/00-总览台.html` 确实是合并版（含 `data-view`），且无跨节点跳转
+5. **产物一致性**：重新跑三连生成脚本后 `git diff` 必须为空
+   → 改了 `pages/` 或 `demo/` 却忘了跑生成脚本、或者只提交了一半，这里会抓出来
+6. 页面数量：`pages/` 4 个、`demo/` 1 个
 
-### 方案 A：用 Personal Access Token (推荐)
+## 认证出问题时的备选方案
+
+### 方案 A：Personal Access Token
 1. GitHub → 头像 → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token
 2. 勾选 `repo` 权限
 3. 复制 token（关掉页面就看不到了）
-4. 推送时用 token 当密码：
+4. 用 token 当密码推送：
    ```bash
-   git push https://<token>@github.com/dou-chang/qiuzhao-workbench.git main
+   git push https://<token>@github.com/Dorchain-chang/-.git main
    ```
 
-### 方案 B：用 SSH key
-1. 生成 key: `ssh-keygen -t ed25519 -C "your_email@example.com"`
+### 方案 B：SSH key
+1. `ssh-keygen -t ed25519 -C "your_email@example.com"`
 2. 把 `~/.ssh/id_ed25519.pub` 内容粘贴到 GitHub → Settings → SSH and GPG keys
-3. 改 remote: `git remote set-url origin git@github.com:dou-chang/qiuzhao-workbench.git`
-4. 推送: `git push -u origin main`
+3. `git remote set-url origin git@github.com:Dorchain-chang/-.git`
+4. 如果报 `Host key verification failed`，是 Git 自带的 ssh 和系统 OpenSSH 不是同一个，
+   可以给仓库单独指定：`git config core.sshCommand "C:/Windows/System32/OpenSSH/ssh.exe"`
 
-## 现在仓库里有什么
+## 仓库里有什么
 
 ```
-qiuzhao-workbench/
+github_repo/
 ├── README.md                  # 项目说明（GitHub 主页）
-├── HANDOVER.md                # 给接手 AI 的交接文档（5+5 个坑 / schema）
+├── HANDOVER.md                # 给接手 AI 的交接文档（10 个坑 / schema / 待办）
 ├── PUSH_TO_GITHUB.md          # 本文件
 ├── LICENSE                    # MIT
 ├── .gitignore
+├── canonical_schema.json      # 构建输入：字段 + 选项（build_pages.py 要读它，别删）
+├── schema_union.json          # 构建输入：资料库三张表的 schema 快照
 ├── .github/workflows/
-│   ├── deploy-demo.yml        # 自动部署 demo 到 GitHub Pages
-│   └── lint.yml               # 语法 + 自包含 + 产物一致性校验
-├── pages/                     # 4 个生产页面（运行在资料库内）
-│   ├── 00-总览台.html
-│   ├── 01-秋招岗位台.html
-│   ├── 02-央国企台.html
-│   ├── 03-成都实习台.html
-│   ├── build_pages.py         # 生成上面 4 个页面
-│   └── build_demo.py          # 生成 demo/
-├── demo/                      # GitHub Pages 用，0 依赖离线 demo
-│   ├── index.html
-│   ├── autumn.html
-│   ├── soe.html
-│   └── intern.html
+│   ├── deploy-demo.yml        # 自动构建 demo/ 并部署到 GitHub Pages
+│   └── lint.yml               # 语法 + 自包含 + 合并版标记 + 产物一致性
+├── pages/                     # 生产页 + 全部构建脚本
+│   ├── 00-总览台.html         #   · build_single.py 产出的合并版单文件应用
+│   ├── 01-秋招岗位台.html     #   · 独立模块页
+│   ├── 02-央国企台.html       #   · 独立模块页
+│   ├── 03-成都实习台.html     #   · 独立模块页
+│   ├── build_pages.py         #   · ① 生成 4 个独立模块页
+│   ├── build_single.py        #   · ② 合并成单文件应用
+│   ├── build_demo.py          #   · ③ 套 localStorage mock 生成 demo
+│   ├── sync_interns.py        #   · 牛客校招日程 -> 实习表 同步脚本
+│   └── deploy_pages.py        #   · 把页面推到腾讯文档·资料库节点
+├── demo/                      # GitHub Pages 站点（0 依赖离线 demo）
+│   └── index.html             #   · 合并版应用 + mock 数据
 └── docs/
     └── DEPLOY.md              # 部署到资料库的步骤
 ```
 
-## 上传后建议
+## 上传后可以顺手做的
 
-- 在仓库 `Settings → About` 加个简介：「2027 届秋招求职工作台 - 4 个独立页面避免长滚动」
+- `Settings → About` 加简介：「2027 届秋招求职工作台 - 单文件应用，页内 Tab 切换零跳转」
 - 加 Topics：`career`、`recruiting`、`workbench`、`html`、`vanilla-js`
-- 把 demo 地址填进 About 的 Website 栏
-- 推一次代码就触发一次 Pages 部署，可以在 Actions 里看状态
+- 把 <https://dorchain-chang.github.io/-/> 填进 About 的 Website 栏
 
 ## 本地预览 demo
 

@@ -29,63 +29,74 @@ jobs:
           mkdir -p /tmp/chk
           for f in pages/*.html demo/*.html; do
             base=$(basename "$f" .html)
-            # extract first <script> block
-            python3 -c "
+            python3 -c '
 import re,sys
-html=open('$f').read()
-m=re.search(r'<script>(.*?)</script>',html,re.S)
-sys.stdout.write(m.group(1) if m else '')
-" > /tmp/chk/${base}.js
-            if node --check /tmp/chk/${base}.js; then
-              echo "✓ $f"
+html=open(sys.argv[1],encoding="utf-8").read()
+m=re.search(r"<script>(.*?)</script>",html,re.S)
+sys.stdout.write(m.group(1) if m else "")
+' "$f" > "/tmp/chk/${base}.js"
+            if node --check "/tmp/chk/${base}.js"; then
+              echo "OK  $f"
             else
-              echo "✗ $f FAILED"
+              echo "FAIL $f"
               exit 1
             fi
           done
 
-      - name: Verify demo adapter present
+      - name: Verify demo stays self-contained
         run: |
           for f in demo/*.html; do
             if ! grep -q "DEMO MODE ADAPTER" "$f"; then
-              echo "✗ $f missing demo adapter"
+              echo "FAIL $f 缺少 demo 适配层"
               exit 1
             fi
           done
-          echo "✓ all demo pages have adapter"
-
-      - name: Verify demo pages stay self-contained
-        run: |
           # demo 是纯静态站，导航不能指向生产环境（资料库）节点，否则一点就跳走
           if grep -q "workbuddy.cn/space/d/" demo/*.html; then
-            echo "✗ demo 页面里残留了生产环境链接"
+            echo "FAIL demo 里残留了生产环境链接"
             grep -n "workbuddy.cn/space/d/" demo/*.html || true
             exit 1
           fi
-          # 生产页反过来必须保留真实的资料库 databaseId
-          if ! grep -q "GgZ71tywhs4HEZytFSqXTP" pages/01-秋招岗位台.html; then
-            echo "✗ 生产页丢失了 databaseId 字面量"
+          # 生产页反过来必须保留真实的资料库 databaseId 字面量
+          if ! grep -q "GgZ71tywhs4HEZytFSqXTP" "pages/00-总览台.html"; then
+            echo "FAIL 生产页丢失了 databaseId 字面量"
             exit 1
           fi
-          echo "✓ demo 自包含 / 生产页 databaseId 完整"
+          echo "OK  demo 自包含 / 生产页 databaseId 完整"
+
+      - name: Verify merged app markers
+        run: |
+          # pages/00-总览台.html 是 build_single.py 产出的合并版单文件应用
+          if ! grep -q 'data-view="soe"' "pages/00-总览台.html"; then
+            echo "FAIL pages/00-总览台.html 不是合并版（缺少 data-view 切换）"
+            exit 1
+          fi
+          # 合并版不应该再有任何跨节点跳转链接
+          if grep -q "workbuddy.cn/space/d/" "pages/00-总览台.html"; then
+            echo "FAIL pages/00-总览台.html 里还有生产环境跳转链接"
+            exit 1
+          fi
+          echo "OK  合并版标记正确"
 
       - name: Verify generated files are up to date
         run: |
           set -e
           python3 pages/build_pages.py
+          python3 pages/build_single.py
           python3 pages/build_demo.py
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           if ! git diff --exit-code -- pages demo; then
-            echo "✗ pages/ 或 demo/ 里的文件与生成脚本不一致，请在本地跑："
-            echo "    python3 pages/build_pages.py && python3 pages/build_demo.py"
+            echo "FAIL pages/ 或 demo/ 与生成脚本不一致。请在本地跑："
+            echo "    python3 pages/build_pages.py && python3 pages/build_single.py && python3 pages/build_demo.py"
+            echo "  然后 git add pages demo 一起提交。"
             exit 1
           fi
-          echo "✓ 生成产物与脚本一致"
+          echo "OK  生成产物与脚本一致"
 
-      - name: Verify page count
+      - name: Verify page counts
         run: |
           prod=$(ls pages/*.html 2>/dev/null | wc -l)
           demo=$(ls demo/*.html 2>/dev/null | wc -l)
-          if [ "$prod" -ne 4 ]; then echo "✗ expected 4 prod pages, got $prod"; exit 1; fi
-          if [ "$demo" -ne 4 ]; then echo "✗ expected 4 demo pages, got $demo"; exit 1; fi
-          echo "✓ $prod prod pages, $demo demo pages"
+          if [ "$prod" -ne 4 ]; then echo "FAIL 期望 4 个生产页，实际 $prod"; exit 1; fi
+          if [ "$demo" -ne 1 ]; then echo "FAIL 期望 1 个 demo 页（合并版单文件），实际 $demo"; exit 1; fi
+          echo "OK  $prod 个生产页 / $demo 个 demo 页"
