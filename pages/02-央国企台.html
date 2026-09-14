@@ -71,7 +71,9 @@ section>h2 .cnt{margin-left:auto;font-size:12px;color:var(--sub);font-weight:500
 .titem .tinfo{flex:1;min-width:180px}
 .titem .tinfo b{font-size:14px}
 .titem .tinfo span{display:block;font-size:12px;color:var(--sub);margin-top:1px}
-.titem .btns{display:flex;gap:6px}
+.titem .btns{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.titem .tdrop{color:var(--sub)}
+.titem .tdrop:hover{background:var(--red-soft);color:var(--red);border-color:var(--red-line)}
 .empty{color:var(--sub);font-size:14px;text-align:center;padding:30px 0}
 /* ---------- 统计卡 ---------- */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:0}
@@ -298,6 +300,7 @@ var JOBS_ID='GgZ71tywhs4HEZytFSqXTP', APPS_ID='oBGkMFTv9Xv4Xn5gFOK18S', INTERN_I
 var OPTS={};
 var state={jobs:[],apps:[],interns:[],todayMine:true,batchMode:''};
 var STAGES=['已投递','笔试','一面','二面','HR面','Offer','感谢信'];
+var DROP_STAGE='已终止';
 var db=null,offline=false;
 var CAREER_KW=['算法','人工智能','AI','大模型','机器学习','深度学习','数据','软件','开发','计算机','信息技术','网络安全','信息安全','测试','前端','后端','运维','嵌入式'];
 var MY_CITY_KW=['北京','成都','天津'];

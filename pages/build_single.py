@@ -52,7 +52,7 @@ MODS.push({refresh:function(){renderToday();renderStats();renderModuleCounts();r
 }});
 function fillStageOv(){
   var sel=$('ov_fStage');if(!sel)return;sel.innerHTML='';var o0=document.createElement('option');o0.value='';o0.textContent='请选择';sel.appendChild(o0);
-  (OPTS['当前阶段']||[]).forEach(function(o){var oo=document.createElement('option');oo.value=o.id;oo.textContent=o.text;sel.appendChild(oo)});
+  (OPTS['当前阶段']||[]).forEach(function(o){if(o.text===DROP_STAGE)return;var oo=document.createElement('option');oo.value=o.id;oo.textContent=o.text;sel.appendChild(oo)});
 }
 /* ---- 投递热力图 ---- */
 var HM_EV_STAGES=['笔试','一面','二面','HR面','Offer'];

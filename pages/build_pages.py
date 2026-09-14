@@ -81,7 +81,9 @@ section>h2 .cnt{margin-left:auto;font-size:12px;color:var(--sub);font-weight:500
 .titem .tinfo{flex:1;min-width:180px}
 .titem .tinfo b{font-size:14px}
 .titem .tinfo span{display:block;font-size:12px;color:var(--sub);margin-top:1px}
-.titem .btns{display:flex;gap:6px}
+.titem .btns{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.titem .tdrop{color:var(--sub)}
+.titem .tdrop:hover{background:var(--red-soft);color:var(--red);border-color:var(--red-line)}
 .empty{color:var(--sub);font-size:14px;text-align:center;padding:30px 0}
 /* ---------- 统计卡 ---------- */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:0}
@@ -221,6 +223,7 @@ var JOBS_ID='{JOBS_ID}', APPS_ID='{APPS_ID}', INTERN_ID='{INTERN_ID}';
 var OPTS={{}};
 var state={{jobs:[],apps:[],interns:[],todayMine:true,batchMode:''}};
 var STAGES=['已投递','笔试','一面','二面','HR面','Offer','感谢信'];
+var DROP_STAGE='已终止';
 var db=null,offline=false;
 var CAREER_KW={CAREER_KW};
 var MY_CITY_KW={MY_CITY_KW};
@@ -388,6 +391,7 @@ def page_overview(urls):
 <section>
   <h2><svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>今天要处理<span class="cnt" id="todayCnt"></span></h2>
   <label class="legend"><input type="checkbox" id="todayMine" checked style="min-height:0;margin:0">只看 AI/计算机相关 · 北京/成都/天津（关掉看全部）</label>
+  <div class="jmeta" style="margin:-2px 0 9px">每条可操作：<b>直达官网</b>／<b>搜网申入口</b> 去投递 ｜ <b>公司情报</b> 先看面经·评价·工商背景 ｜ <b>标记已投 / 节点已完成</b> 推进并记进投递跟踪 ｜ <b>不投了 / 去掉这条</b> 移出今日列表</div>
   <div id="todayList"><div class="empty">加载中…</div></div>
 </section>
 
@@ -469,7 +473,7 @@ function todayItems(){
     else if(n<=3)items.push({kind:'job',level:'orange',badge:(n===0?'今天截止':'剩'+n+'天'),title:plain(j['公司'])||'未命名公司',meta:'岗位：'+(plain(j['岗位方向'])||'未填')+' ｜ 截止 '+dd,rec:j});
   });
   state.apps.forEach(function(a){
-    var st=appStage(a);if(st==='Offer'||st==='感谢信')return;
+    var st=appStage(a);if(st==='Offer'||st==='感谢信'||st===DROP_STAGE)return;
     var nd=dOnly(a['下次节点']);if(!nd)return;
     var n=diffDays(t,nd);
     if(n<0)items.push({kind:'app',level:'red',badge:'节点已过',title:plain(a['公司'])+' · '+plain(a['岗位']),meta:st+' ｜ 原定 '+nd+'（'+(plain(a['节点说明'])||'未填说明')+'）',rec:a});
@@ -486,17 +490,62 @@ function renderToday(){
   items.forEach(function(it){
     var d=document.createElement('div');d.className='titem '+it.level;
     var btns='';
-    if(it.kind==='job'){var jl=jobLink(it.rec);btns='<button class="btn btn-sm tgo '+(jl?'btn-go':'btn-search')+'">'+(jl?'直达官网':'搜索网申入口')+'</button>';}
-    else{var al=urlVal(it.rec['相关链接']).link;btns='<button class="btn btn-sm tgo '+(al?'btn-ghost':'btn-search')+'">'+(al?'查看链接':'搜索进度')+'</button>';}
+    if(it.kind==='job'){var jl=jobLink(it.rec);btns='<button class="btn btn-sm tgo '+(jl?'btn-go':'btn-search')+'">'+(jl?'直达官网':'搜网申入口')+'</button>';}
+    else{var al=urlVal(it.rec['相关链接']).link;btns='<button class="btn btn-sm tgo '+(al?'btn-ghost':'btn-search')+'">'+(al?'查看链接':'搜公司')+'</button>';}
+    btns+='<button class="btn btn-sm btn-ghost tintel">公司情报</button><button class="btn btn-sm btn-go tdone">'+(it.kind==='job'?'标记已投':'节点已完成')+'</button><button class="btn btn-sm btn-gray tdrop">'+(it.kind==='job'?'不投了':'去掉这条')+'</button>';
     d.innerHTML='<span class="badge">'+esc(it.badge)+'</span><div class="tinfo"><b>'+esc(it.title)+'</b><span>'+esc(it.meta)+'</span></div><div class="btns">'+btns+'</div>';
     d.querySelector('.tgo').addEventListener('click',function(){if(it.kind==='job'){var l=jobLink(it.rec);if(l){openLink(l)}else{showIntel(fieldText(it.rec,'公司'))}}else{var al=urlVal(it.rec['相关链接']).link;if(al){openLink(al)}else{showIntel(fieldText(it.rec,'公司'))}}});
+    d.querySelector('.tintel').addEventListener('click',function(){showIntel(fieldText(it.rec,'公司'))});
+    d.querySelector('.tdone').addEventListener('click',function(){todayDone(it,this)});
+    d.querySelector('.tdrop').addEventListener('click',function(){todayDrop(it,this)});
     box.appendChild(d);
   });
+}
+/* 今日处理 → 标记已完成：岗位=已投递+自动建档；投递跟踪=清空本次节点 */
+function todayDone(it,btn){
+  if(btn)btn.disabled=true;
+  if(it.kind==='job'){
+    db.updateRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(it.rec),properties:{'投递状态':{select:'已投递'}}})
+      .then(function(){return todaySyncTracking(it.rec)})
+      .then(reloadAll)
+      .catch(function(e){console.error('[database] 标记已投失败:',e);if(btn)btn.disabled=false;alert('更新失败，请刷新后重试')});
+  }else{
+    db.updateRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(it.rec),properties:{'下次节点':{date:null}}})
+      .then(reloadAll)
+      .catch(function(e){console.error('[database] 清空节点失败:',e);if(btn)btn.disabled=false;alert('更新失败，请刷新后重试')});
+  }
+}
+/* 今日处理 → 去掉：岗位=不投了；投递跟踪=已终止（两条都从今日列表消失，可随时改回） */
+function todayDrop(it,btn){
+  var name=fieldText(it.rec,'公司')||'这条记录';
+  var tip=it.kind==='job'
+    ?'确定不再考虑「'+name+'」吗？该岗位会标记为「不投了」，之后不会再出现在今日处理里（可去岗位表改回）。'
+    :'确定去掉「'+name+'」这条投递跟踪吗？会标记为「已终止」，不再出现在今日处理里（可在投递跟踪里改回阶段）。';
+  if(!confirm(tip))return;
+  if(btn)btn.disabled=true;
+  if(it.kind==='job'){
+    db.updateRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(it.rec),properties:{'投递状态':{select:'不投了'}}})
+      .then(reloadAll)
+      .catch(function(e){console.error('[database] 标记失败:',e);if(btn)btn.disabled=false;alert('更新失败，请刷新后重试')});
+  }else{
+    db.updateRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(it.rec),properties:{'当前阶段':{select:'已终止'},'下次节点':{date:null}}})
+      .then(reloadAll)
+      .catch(function(e){console.error('[database] 标记失败:',e);if(btn)btn.disabled=false;alert('更新失败，请刷新后重试')});
+  }
+}
+/* 岗位标记已投后，若跟踪表还没有这家公司就自动建档 */
+function todaySyncTracking(rec){
+  var company=fieldText(rec,'公司');if(!company)return Promise.resolve();
+  var exists=state.apps.some(function(a){return fieldText(a,'公司')===company});
+  if(exists)return Promise.resolve();
+  var p={'公司':{text:company},'岗位':{text:fieldText(rec,'岗位方向')||'校招岗位'},'当前阶段':{select:'已投递'},'投递日期':{date:today()},'节点说明':{text:'由今日处理一键标记自动生成'}};
+  var u=urlVal(rec['投递链接']);if(u.link)p['相关链接']={url:{text:'网申入口',link:u.link}};
+  return db.addRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',properties:p}).catch(function(e){console.error('[database] 建档失败:',e)});
 }
 function renderStats(){
   var w=0,done=0,ddl=0,live=0,t=today();
   state.jobs.forEach(function(j){var st=jobStatus(j);if(st==='待投递')w++;if(st==='已投递')done++;var dd=dOnly(j['截止日期']);if(st==='待投递'&&dd){var n=diffDays(t,dd);if(n>=0&&n<=7)ddl++}});
-  state.apps.forEach(function(a){var st=appStage(a);if(st!=='Offer'&&st!=='感谢信'&&st!=='已投递')live++});
+  state.apps.forEach(function(a){var st=appStage(a);if(st!=='Offer'&&st!=='感谢信'&&st!=='已投递'&&st!==DROP_STAGE)live++});
   setText('stWait',w);setText('stDone',done);setText('stDdl',ddl);setText('stLive',live);
   markBindable($('stWait'),JOBS_ID);markBindable($('stDone'),JOBS_ID);markBindable($('stDdl'),JOBS_ID);markBindable($('stLive'),APPS_ID);
 }
@@ -543,7 +592,7 @@ function renderApps(){
     var nd=dOnly(a['下次节点']);if(nd){var nEl=card.querySelectorAll('[data-field="下次节点"]')[0];var n=diffDays(today(),nd);if(n<0&&appStage(a)!=='Offer'&&appStage(a)!=='感谢信'){nEl.style.color='var(--red)';nEl.textContent=nd+'（已过期）'}}
     var sel=card.querySelector('.astage');sel.innerHTML='';
     var opt0=document.createElement('option');opt0.value='';opt0.textContent='改阶段';sel.appendChild(opt0);
-    STAGES.forEach(function(s){var o=document.createElement('option');o.value=optId('当前阶段',s);o.textContent=s;sel.appendChild(o)});
+    STAGES.concat([DROP_STAGE]).forEach(function(s){var o=document.createElement('option');o.value=optId('当前阶段',s);o.textContent=s;sel.appendChild(o)});
     sel.addEventListener('change',function(){if(!sel.value)return;sel.disabled=true;db.updateRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(a),properties:{'当前阶段':{select:sel.value}}}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:',e);sel.disabled=false})});
     card.querySelector('.anote').addEventListener('click',function(){var v=prompt('复盘笔记：',plain(a['复盘笔记']));if(v===null)return;db.updateRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(a),properties:{'复盘笔记':{text:v}}}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:',e)})});
     card.querySelector('.adel').addEventListener('click',function(){if(!confirm('确定删除「'+plain(a['公司'])+'」这条记录吗？'))return;db.deleteRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(a)}).then(reloadAll).catch(function(e){console.error('[database] 删除失败:',e)})});
