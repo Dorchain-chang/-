@@ -110,6 +110,12 @@ section>h2 .cnt{margin-left:auto;font-size:12px;color:var(--sub);font-weight:500
 .jmeta{font-size:12px;color:var(--sub)}
 .jnote{font-size:13px;color:var(--txt);background:#f7f9fd;border:1px solid #eef1f8;border-radius:8px;padding:7px 10px;margin:2px 0 0}
 .jacts{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;align-items:center}
+.astag{cursor:pointer}
+.astag:active{transform:scale(.95)}
+.astagebox{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center}
+.schip{min-height:30px;padding:0 13px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--sub);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.schip:hover{border-color:#c3cbe0;color:var(--txt)}
+.schip.cur{background:var(--grad);color:#fff;border-color:transparent}
 /* ---------- 按钮 ---------- */
 .btn{appearance:none;border:0;cursor:pointer;padding:0 14px;height:36px;border-radius:10px;font-size:13px;font-weight:600;background:var(--card);color:var(--txt);font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:36px;transition:transform .08s,box-shadow .15s,filter .15s,background .15s}
 .btn:active{transform:translateY(1px)}
@@ -314,7 +320,8 @@ nav.tabbar .tab{cursor:pointer;font-family:inherit}
     <div class="jmeta">投递：<span data-field="投递日期"></span> ｜ 下次：<span data-field="下次节点"></span></div>
     <div class="jmeta" data-field="节点说明"></div>
     <div class="jnote" data-field="复盘笔记"></div>
-    <div class="jacts"><a class="btn btn-ghost btn-sm" data-field="相关链接" target="_blank" rel="noopener">链接</a><select class="astage"></select><button class="btn btn-gray btn-sm anote">记笔记</button><button class="btn btn-gray btn-sm adel">删除</button></div>
+    <div class="jacts"><a class="btn btn-ghost btn-sm" data-field="相关链接" target="_blank" rel="noopener">链接</a><button type="button" class="btn btn-gray btn-sm aquick">已投</button><button type="button" class="btn btn-gray btn-sm aquick2">不投</button><button class="btn btn-gray btn-sm anote">记笔记</button><button class="btn btn-gray btn-sm adel">删除</button></div>
+    <div class="astagebox" hidden></div>
   </div>
 </div>
 
@@ -849,10 +856,31 @@ function renderApps(){
     setFieldText(card,'投递日期',dOnly(a['投递日期']),APPS_ID);setFieldText(card,'下次节点',dOnly(a['下次节点']),APPS_ID);setFieldText(card,'节点说明',a['节点说明'],APPS_ID);setFieldText(card,'复盘笔记',a['复盘笔记'],APPS_ID);setFieldText(card,'相关链接',a['相关链接'],APPS_ID);
     card.querySelector('[data-field="相关链接"]').addEventListener('click',function(e){e.preventDefault();var l=urlVal(a['相关链接']).link;if(l){openLink(l)}else{showIntel(fieldText(a,'公司'),nkId(a))}});
     var nd=dOnly(a['下次节点']);if(nd){var nEl=card.querySelectorAll('[data-field="下次节点"]')[0];var n=diffDays(today(),nd);if(n<0&&appStage(a)!=='Offer'&&appStage(a)!=='感谢信'){nEl.style.color='var(--red)';nEl.textContent=nd+'（已过期）'}}
-    var sel=card.querySelector('.astage');sel.innerHTML='';
-    var opt0=document.createElement('option');opt0.value='';opt0.textContent='改阶段';sel.appendChild(opt0);
-    STAGES.concat([DROP_STAGE]).forEach(function(s){var o=document.createElement('option');o.value=optId('当前阶段',s);o.textContent=s;sel.appendChild(o)});
-    sel.addEventListener('change',function(){if(!sel.value)return;sel.disabled=true;db.updateRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(a),properties:{'当前阶段':{select:sel.value}}}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:'+((e&&e.message)||String(e)));sel.disabled=false})});
+    var tagEl=card.querySelector('[data-field="当前阶段"]');
+    var abox=card.querySelector('.astagebox');
+    var qy=card.querySelector('.aquick'),qn=card.querySelector('.aquick2');
+    function setStage(name,skipConfirm){
+      var cur=appStage(a);
+      if(name===cur)return;
+      if(!skipConfirm&&!confirm('把「'+plain(a['公司'])+'」标记为「'+name+'」吗？'))return;
+      var props={'当前阶段':{select:optId('当前阶段',name)}};
+      if(name===DROP_STAGE)props['下次节点']={date:null};
+      db.updateRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(a),properties:props}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:'+((e&&e.message)||String(e)))});
+    }
+    qy.disabled=(appStage(a)==='已投递');qn.disabled=(appStage(a)===DROP_STAGE);
+    qy.addEventListener('click',function(){setStage('已投递',true)});
+    qn.addEventListener('click',function(){setStage(DROP_STAGE,false)});
+    tagEl.classList.add('astag');tagEl.title='点击展开全部阶段';
+    tagEl.addEventListener('click',function(){
+      if(!abox.hidden){abox.hidden=true;return}
+      abox.innerHTML='';
+      STAGES.concat([DROP_STAGE]).forEach(function(s){
+        var b=document.createElement('button');b.type='button';b.className='schip'+(s===appStage(a)?' cur':'');b.textContent=s;
+        b.addEventListener('click',function(){abox.hidden=true;setStage(s,s!==DROP_STAGE)});
+        abox.appendChild(b);
+      });
+      abox.hidden=false;
+    });
     card.querySelector('.anote').addEventListener('click',function(){var v=prompt('复盘笔记：',plain(a['复盘笔记']));if(v===null)return;db.updateRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(a),properties:{'复盘笔记':{text:v}}}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:'+((e&&e.message)||String(e)))})});
     card.querySelector('.adel').addEventListener('click',function(){if(!confirm('确定删除「'+plain(a['公司'])+'」这条记录吗？'))return;db.deleteRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(a)}).then(reloadAll).catch(function(e){console.error('[database] 删除失败:'+((e&&e.message)||String(e)))})});
     box.appendChild(card);

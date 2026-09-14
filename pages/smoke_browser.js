@@ -178,6 +178,25 @@ const MOCK = `
   const hmOpen = await page.evaluate(() => getComputedStyle(document.getElementById('hmModal')).display !== 'none');
   const hmDetail = await page.textContent('#hmDetail');
   await page.click('#hmClose');
+
+  // 阶段快捷 UI：卡片有 已投/不投 快键；点阶段标签展开全部阶段选项（不点选项，避免触发写库）
+  const stageUi = await page.evaluate(() => {
+    const card = document.querySelector('#appCards .acard, #ov_appCards .acard');
+    if (!card) return null;
+    const qy = card.querySelector('.aquick');
+    const qn = card.querySelector('.aquick2');
+    const tag = card.querySelector('[data-field="当前阶段"]');
+    const box = card.querySelector('.astagebox');
+    if (!tag || !box) return null;
+    const hiddenBefore = box.hidden;
+    tag.click();
+    const chips = Array.from(box.querySelectorAll('.schip')).map((b) => b.textContent);
+    const visibleAfter = !box.hidden;
+    const curMarked = !!box.querySelector('.schip.cur');
+    tag.click();
+    const hiddenAfterToggle = box.hidden;
+    return { hasQuick: !!qy && !!qn, quickTxt: [qy && qy.textContent, qn && qn.textContent], hiddenBefore, visibleAfter, chips, curMarked, hiddenAfterToggle };
+  });
   await page.click('nav.tabbar .tab[data-view="autumn"]');
 
   // 外部数据变更订阅：模拟他人在表格改数据 → 页面应自动重拉
@@ -209,6 +228,12 @@ const MOCK = `
   console.log('情报面板: 分区', intel.secs, '条目', intel.items, '含牛客企业深链:', intel.hasEnterprise, '| 打开:', intelOpen);
   console.log('  样例链接:', intel.sample.join(' , '));
   console.log('热力图弹层打开:', hmOpen, '| 明细:', String(hmDetail).slice(0, 70));
+  if (!stageUi) { console.error('阶段快捷UI: 未找到卡片/标签'); errors.push('stage UI missing'); }
+  else {
+    console.log('阶段快捷UI: 快键', stageUi.quickTxt.join('/'), '| 展开前隐藏:', stageUi.hiddenBefore, '| 点击后展开:', stageUi.visibleAfter, '| 当前阶段高亮:', stageUi.curMarked, '| 再点收起:', stageUi.hiddenAfterToggle);
+    console.log('  阶段选项:', stageUi.chips.join(' · '));
+    if (!stageUi.hasQuick || !stageUi.visibleAfter || !stageUi.curMarked || !stageUi.hiddenAfterToggle) errors.push('stage UI broken');
+  }
   console.log('--- 实时订阅 ---');
   console.log('外部变更前 query:', beforeQueries, '→ 后:', afterQueries, '| 触发重拉:', afterQueries > beforeQueries, '| handler 实际执行次数:', fired);
   if (mem) console.log('JS 堆: 已用', mem.usedMB, 'MB / 总量', mem.totalMB, 'MB');
