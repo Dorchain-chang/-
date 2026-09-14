@@ -13,7 +13,12 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+# CI 里仓库根 == 项目根；本地开发时 workflow 在 github_repo/ 子目录下，两种都认
 WF_DIR = ROOT / ".github" / "workflows"
+if not WF_DIR.is_dir():
+    alt = ROOT / "github_repo" / ".github" / "workflows"
+    if alt.is_dir():
+        WF_DIR = alt
 
 
 def main() -> int:

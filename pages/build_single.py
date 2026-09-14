@@ -226,13 +226,10 @@ function boot(){
   $('lnkModal').addEventListener('click',function(e){if(e.target===$('lnkModal'))$('lnkModal').style.display='none'});
   bindTabs();
   if(!db){goOffline();return}
-  setText('syncTxt','已同步');
   MODS.forEach(function(m){m.bind&&m.bind()});
-  Promise.all([db.getSchema({databaseId:'GgZ71tywhs4HEZytFSqXTP'}),db.getSchema({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S'}),db.getSchema({databaseId:'tgH8096uENTaIj8RSY9qm5'})]).then(function(ss){
-    ss.forEach(function(schema){(schema.properties||[]).forEach(function(f){if((f.type==='select'||f.type==='multi_select')&&f.config&&f.config.options){OPTS[f.name]=f.config.options}})});
-    MODS.forEach(function(m){m.setup&&m.setup()});
-    return reloadAll();
-  }).catch(function(e){console.error('[database] 初始化失败:',e);goOffline()});
+  /* 就绪链路抽成可重跑的 DB_READY：离线横幅的「重试连接」复用它，无需整页刷新 */
+  DB_READY=function(){return initSchema(function(){MODS.forEach(function(m){m.setup&&m.setup()})})};
+  DB_READY().catch(function(e){console.error('[database] 初始化失败:'+((e&&e.message)||String(e)));goOffline()});
 }
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',boot)}else{boot()}
 """
@@ -295,7 +292,7 @@ def build():
     for mod in MODULES:
         hero, body, js = extract(pages[mod])
         # shared js = everything up to end of reloadAll definition
-        marker = "function reloadAll(){return loadData().then(function(){refreshAll()});}"
+        marker = "function reloadAll(){return loadData().then(function(){refreshAll()},function(){refreshAll()});}"
         idx = js.index(marker) + len(marker)
         if not shared_done:
             shared = js[:idx]
@@ -317,7 +314,7 @@ def build():
     glue = """
 var MODS=[];
 function refreshAll(){MODS.forEach(function(m){m.refresh()});}
-function goOffline(){offline=true;$('syncBox').className='sync off';setText('syncTxt','离线模式');$('offBanner').style.display='block';MODS.forEach(function(m){m.refresh&&m.refresh()});}
+function goOffline(){offline=true;setSync('off');$('offBanner').style.display='block';MODS.forEach(function(m){m.refresh&&m.refresh()});}
 """
     js_all = shared + "\n" + glue + "\n" + "\n".join(module_blocks) + "\n" + BOOT_JS + "\n})();"
 
@@ -333,7 +330,7 @@ function goOffline(){offline=true;$('syncBox').className='sync off';setText('syn
 <body>
 {nav}
 <div class="wrap">
-<div class="banner" id="offBanner">离线模式：未连接到在线数据表，数据读写暂不可用。请通过资料库链接打开本页面。</div>
+<div class="banner" id="offBanner">离线模式：未连接到在线数据表，数据读写暂不可用。请通过资料库链接打开本页面。<button type="button" class="btn btn-sm" id="offRetry" style="margin-left:10px;cursor:pointer">重试连接</button></div>
 {views}
 </div>
 {lnk}

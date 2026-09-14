@@ -35,6 +35,13 @@ jobs:
       - name: Check inline JS syntax
         run: python3 pages/check_inline_js.py
 
+      # 坑：build_pages.py 的 JS 是普通（非 raw）三引号串，JS 里写 \u0000 / \x1f / \b 之类
+      # 会被 Python 先解析成真实控制字符写进 HTML，HTML 解析再换成 U+FFFD，正则直接
+      # 「Range out of order」整页脚本失效——而 node --check 查不出来（文件里是合法字节）。
+      # 这一步专门拦这一类，见 pages/check_escapes.py 顶部说明。
+      - name: Guard against Python-ate JS escapes / raw control chars
+        run: python3 pages/check_escapes.py
+
       - name: Verify demo stays self-contained
         run: |
           for f in demo/*.html; do
@@ -92,3 +99,37 @@ jobs:
           if [ "$prod" -ne 4 ]; then echo "FAIL 期望 4 个生产页，实际 $prod"; exit 1; fi
           if [ "$demo" -ne 1 ]; then echo "FAIL 期望 1 个 demo 页（合并版单文件），实际 $demo"; exit 1; fi
           echo "OK  $prod 个生产页 / $demo 个 demo 页"
+
+  smoke:
+    # 真浏览器跑一遍：注入 mock SDK（三表 620 条岗位），验证初始化链路、四个视图渲染、
+    # 筛选、热力图、公司情报深链、以及 db.onUpdated 外部变更自动重拉。
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # pages/ 下的产物是 gitignore 的，冒烟前必须先构建出来
+      - name: Build pages
+        run: |
+          python3 pages/build_pages.py
+          python3 pages/build_single.py
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright-core@1.63.0
+          npx playwright install --with-deps chromium
+
+      - name: Browser smoke test
+        run: |
+          export NODE_PATH="$PWD/node_modules"
+          export CHROME_EXE="$(node -e 'console.log(require("playwright-core").chromium.executablePath())')"
+          node pages/smoke_browser.js

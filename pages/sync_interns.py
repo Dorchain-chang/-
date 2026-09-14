@@ -35,6 +35,16 @@ def fetch_nowcoder():
     return rows
 
 
+def ts2date(ms):
+    """牛客返回的是毫秒时间戳，统一转北京时间 YYYY-MM-DD。"""
+    if not ms:
+        return None
+    try:
+        return time.strftime("%Y-%m-%d", time.gmtime(int(ms) / 1000 + 8 * 3600))
+    except Exception:
+        return None
+
+
 def match(row):
     # HARD RULE: only true internship batches (27届实习/日常实习/暑期实习…).
     # 秋招/校招/春招批次绝不入实习表（曾在 2026-09-13 混入 16 条秋招后被清理）。
@@ -51,17 +61,26 @@ def match(row):
         return None
     link = row.get("customWangshenLink") or row.get("sourceInformation") or ""
     eval_txt = re.sub(r"\s+", " ", str(row.get("companyEvaluation") or ""))[:60]
-    return {
+    rec = {
         "公司": {"text": str(row.get("name") or "").strip()},
         "岗位名称": {"text": "、".join(str(c) for c in hit_careers[:6])[:60] or "实习"},
-        "薪资": {"text": ""},
         "工作地点": {"text": "、".join(hit_cities)},
         "岗位要求": {"text": batch or "实习"},
         "投递状态": {"select": "待投递"},
-        "投递链接": {"url": {"text": "投递入口", "link": link}} if link else None,
         "来源": {"text": "牛客校招日程"},
         "备注": {"text": (f"{batch} · " if batch else "") + (eval_txt or "牛客同步")},
     }
+    if row.get("companyId"):
+        # 页面「公司情报」凭它生成牛客企业主页/面经/真题/薪资/讨论 5 条精准深链
+        rec["牛客ID"] = {"text": str(row["companyId"])}
+    if link:
+        rec["投递链接"] = {"url": {"text": "投递入口", "link": link}}
+    begin, end = ts2date(row.get("wangshenBeginDate")), ts2date(row.get("wangshenEndDate"))
+    if begin:
+        rec["网申开始"] = {"date": begin}
+    if end:
+        rec["截止日期"] = {"date": end}
+    return rec
 
 
 def db_script(name, args, token, stdin_payload=None):
@@ -95,7 +114,8 @@ def main():
     q = db_script("query_database_record.py", ["--database-id", INTERN_DB, "--page-size", "200", "--token-stdin"], token)
     if "error" in q:
         print("QUERY FAIL:", json.dumps(q, ensure_ascii=False)[:200]); return
-    data = q.get("data") or {}
+    # 兼容两种返回结构：顶层 results / 嵌套 data.records
+    data = q.get("data") if isinstance(q.get("data"), dict) else q
     existing = set()
     for rec in (data.get("records") or data.get("results") or []):
         props = rec.get("properties") or rec

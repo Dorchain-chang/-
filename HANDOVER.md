@@ -161,19 +161,27 @@ j["投递链接"] = [{ text: "校招官网", link: "https://..." }, { text: "牛
 
 页面运行在腾讯文档的 iframe 里，`target="_blank"` 和 `window.open(url)` 都会被拦截为静默失败。
 
-✅ **必须**用 `openLink(url)` 函数：
+✅ **必须**走统一的 `openLink(link)` 函数（已内置协议白名单 + 沙箱兜底）：
+
 ```js
-function openLink(url) {
-  try {
-    const w = window.open(url, '_blank');
-    if (w) return;
-    // 兜底弹层：显示链接 + 一键复制按钮
-    showLinkModal(url);
-  } catch(e) {
-    showLinkModal(url);
+// 只放行 http(s)；javascript:/data: 等可执行协议直接拦截
+function openLink(link){
+  if(!link){ alert('这条记录没有填链接'); return; }
+  var safe = trimStr(link);
+  if(!isHttpUrl(safe)){                 // 不满足就尝试补 https，再不行拦截
+    if(looksDomain(safe)) safe = 'https://' + safe;
+    else { alert('链接协议不受支持，已阻止打开'); return; }
   }
+  var w = null;
+  try { w = window.open(safe, '_blank', 'noopener,noreferrer'); } catch(e){}
+  if(!w) showLinkModal(safe);           // 兜底弹层：显示链接 + 一键复制
 }
 ```
+
+要点：
+- `noopener` —— 防止被打开的页面通过 `window.opener` 反向操纵本页（本页内存里装着全部投递数据）；
+- `noreferrer` —— 让第三方**收不到 Referer**，不会泄漏你的文档地址；
+- 判断函数一律用 `indexOf` / `charCodeAt` 写字面量比较，**不要用正则和反斜杠转义**（原因见坑 15）。
 
 ### 坑 4：lint 强制 databaseId 字面量
 
@@ -300,6 +308,20 @@ import re,sys          # ← 顶格，YAML 认为块标量在这里结束了
 （`build_type=workflow`，配合 `permissions: pages: write`）。若仍失败，去
 Settings → Pages → Source 手动选「GitHub Actions」。
 
+### 坑 15（P0）：Python 三引号串会吃掉 JS 的 `\反斜杠` 转义 → 整页白屏
+
+`build_pages.py` / `build_single.py` 里的大段 JS 是用**普通（非 raw）三引号字符串**拼的。
+于是 JS 里写的 `\u0000`、`\x1f`、`\b`、`\v` 会先被 Python 当成自己的转义，解析成**真实控制字符**写进 HTML。
+HTML 解析阶段再把裸控制字符（NUL / 0x01-0x1f）替换成 `U+FFFD`，正则就变成
+`[U+FFFD-0x1F]` → **Range out of order in character class** → 整个 `<script>` 语法错误 → **页面全白**。
+
+最坑的是：`node --check` 和 `new Function` **都查不出来**（文件里是合法的 NUL 字节），只有真浏览器加载才炸。
+当时是 `openLink` 里写了一句 `link.replace(/[\u0000-\u001f]/g,'')` 触发的。
+
+✅ 规矩：
+- 新增 JS 里**不要写任何 `\` 转义**，改用 `charCodeAt` / `indexOf` / `split('')` 做字符扫描；
+- 写正则前先跑 `python pages/check_escapes.py`（CI 里也有这一步，且已自测能拦住这个旧 bug）。
+
 ---
 
 ## 6. 已完成的功能
@@ -325,16 +347,27 @@ Settings → Pages → Source 手动选「GitHub Actions」。
 - [x] GitHub Pages 已在仓库里启用（`build_type=workflow`），<https://dorchain-chang.github.io/-/> 部署成功
 - [x] 字段值对象拍平成 `plain()`，修掉页面上的 `[object Object]`（见坑 8）
 - [x] HANDOVER / README / PUSH_TO_GITHUB 与实际架构、真实仓库地址对齐
+- [x] **今晚要处理 4 按钮**：每条「今天要处理」都能 直达/搜网申 · 查公司情报 · 标已完成 · 去掉（不需要切 Tab）
+- [x] **投递热力图**：GitHub 贡献图风格 26 周网格，颜色深浅=每日动作量，橙圈=面试节点日，点击看当天明细 + 连续投递 streak
+- [x] **公司情报搜索**：表里没有的公司也能一键查（总览台快捷输入框 + 各卡片情报按钮）
+- [x] **牛客企业档案深链**：`牛客ID`(companyId) 回填 620 条，情报面板首出 主页/面经/真题/薪资/讨论 5 条精准深链
+- [x] **终检六维度**：对外保密 / 数据安全 / 运行内存 / 数据存储 / 稳定性 / 牛客接入（报告见 `docs/AUDIT-2026-09-14.md`）
+- [x] **P0 整页白屏修复**（见坑 15）+ 新增 `check_escapes.py` 守卫并接入 CI
+- [x] **稳定性兜底**：拉数失败自动重试 · 并发拉数去重 · 离线横幅「重试连接」· `onUpdated` 实时订阅（整页仅 1 个，去抖 700ms、回声抑制 1200ms）
+- [x] **一键预检** `pages/preflight.py`（构建 3 步 + 转义守卫 + workflow/JS/schema/SDK lint + Playwright 真浏览器冒烟），15 项全绿
+- [x] **性能实测**：620 岗位下首屏 222ms、重渲染中位 12.9ms、JS 堆 10MB、DOM 9911 节点（`pages/perf_probe.js`）
 
 ---
 
 ## 7. 待办（按优先级排序）
 
-1. **`deploy_pages.py` 的节点映射要和单文件架构对齐**：现在 4 个节点各推各自的 `0X-*.html`，
-   只有总览台节点拿到合并版；如果想让 4 个节点都是合并版（页内 Tab 到处能切），把 `PAGES` 指向同一个文件
+1. ~~`deploy_pages.py` 的节点映射要和单文件架构对齐~~ ✅ 已修：4 个节点统一推单文件合并版（v14）
 2. **资料库清理**：4 个旧占位版页面（无 ID 记录）需主人在腾讯文档 UI 手动删（无 delete API）
 3. **简历投递追踪统计图表**：现在只有漏斗图，可以再加阶段分布饼图
 4. **BOSS 直聘 cookie 自动化**（需要主人提供 cookie，**反爬风险**）
+5. **同一张秋招表被两条自动化并发写**：`sync_autumn_all.py`（不限方向，上限 60）与 `sync_nowcoder_autumn.py`（AI/算法筛选，上限 30）曾撞车 → 建议合并成一条或错峰
+6. **可选增强**：今日处理纳入「实习临期」提醒 · 情报面板补第 6 条 `jobSchedule`（宣讲会）深链
+7. **要不要 push 到 GitHub**：本地 `github_repo` 已同步全部改动并提交，等主人明确许可后再 `git push`
 5. **响应式优化**：iPad 横向 / iPhone SE 小屏（目前只有 `max-width:768px` 一档）
 6. **导出为 PDF 简历投递报告**（周报用）
 

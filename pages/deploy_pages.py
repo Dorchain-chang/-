@@ -20,7 +20,7 @@ PAGES = [
     ("JgXPaIiaDMGt2xH3vBftAo", SINGLE),
 ]
 
-MSG = "新增投递热力图（GitHub 贡献图风格，26 周/点击看当天明细/连续投递天数）+ 任意公司情报搜索入口"
+MSG = "安全与稳定性加固：外链仅放行 http(s)+noopener、表单缓存跳过敏感字段；实时订阅表变更自动刷新、拉数失败自动重试、离线可一键重连；分页 pageSize 200 + 并发去重 + 分类结果缓存；公司情报接入牛客企业档案深链（主页/面经/真题/薪资/讨论）"
 
 
 def run_page_script(name, args, token):

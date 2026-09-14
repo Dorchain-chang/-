@@ -1,1 +1,222 @@
-{"id": "union", "title": "union", "properties": [{"id": "HTbXAPiD", "name": "公司", "type": "text"}, {"id": "T5FPRO5e", "name": "批次", "type": "select", "config": {"options": [{"id": "b27qz9m3k8f2x1td", "text": "27秋招", "style": 19}, {"id": "b27sxq4n9l3y2uea", "text": "27暑期实习", "style": 0}, {"id": "b27rcx5p0m4z3vfb", "text": "27日常实习", "style": 26}, {"id": "b27oth6q1n5a4wgc", "text": "其他", "style": 12}]}}, {"id": "ckz87gOm", "name": "岗位方向", "type": "text"}, {"id": "kScSsgVU", "name": "工作地点", "type": "text"}, {"id": "pwXF1C9c", "name": "优先级", "type": "select", "config": {"options": [{"id": "pri0a7r2s8b5x9dh", "text": "P0", "style": 2}, {"id": "pri1b8s3t9c6y0ej", "text": "P1", "style": 0}, {"id": "pri2c9t4u0d7z1fk", "text": "P2", "style": 3}]}}, {"id": "aN2xK6oP", "name": "投递状态", "type": "select", "config": {"options": [{"id": "stt0d1u5v1e8a2gl", "text": "待投递", "style": 11}, {"id": "sty1e2v6w2f9b3hm", "text": "已投递", "style": 19}, {"id": "stn2f3w7x3g0c4in", "text": "不投了", "style": 14}]}}, {"id": "jNQzWfbz", "name": "网申开始", "type": "date"}, {"id": "Ean9zLEX", "name": "截止日期", "type": "date"}, {"id": "5H5FGiL4", "name": "投递链接", "type": "url"}, {"id": "vdt7k2IN", "name": "来源", "type": "text"}, {"id": "qifzAMoC", "name": "备注", "type": "text"}, {"id": "p5bc4tmu", "name": "公司", "type": "text"}, {"id": "ilnLZZmy", "name": "岗位", "type": "text"}, {"id": "t0ChZOYJ", "name": "当前阶段", "type": "select", "config": {"options": [{"id": "ph1a3x8y4h1d5jos", "text": "已投递", "style": 0}, {"id": "ph2b4y9z5i2e6kpt", "text": "笔试", "style": 5}, {"id": "ph3c5z0a6j3f7lqu", "text": "一面", "style": 0}, {"id": "ph4d6a1b7k4g8mrv", "text": "二面", "style": 13}, {"id": "ph5e7b2c8l5h9nsw", "text": "HR面", "style": 15}, {"id": "ph6f8c3d9m6i0otx", "text": "Offer", "style": 3}, {"id": "ph7g9d4e0n7j1puy", "text": "感谢信", "style": 13}, {"id": "SEijMhyZQyf8", "text": "已终止", "style": 12}]}}, {"id": "WSfG7WvP", "name": "投递日期", "type": "date"}, {"id": "ATfhys0n", "name": "下次节点", "type": "date"}, {"id": "O8aE7weo", "name": "节点说明", "type": "text"}, {"id": "VWc5bvK7", "name": "复盘笔记", "type": "text"}, {"id": "ptSEe4aD", "name": "相关链接", "type": "url"}]}
+{
+ "id": "union",
+ "title": "union",
+ "properties": [
+  {
+   "id": "HTbXAPiD",
+   "name": "公司",
+   "type": "text"
+  },
+  {
+   "id": "T5FPRO5e",
+   "name": "批次",
+   "type": "select",
+   "config": {
+    "options": [
+     {
+      "id": "b27qz9m3k8f2x1td",
+      "text": "27秋招",
+      "style": 19
+     },
+     {
+      "id": "b27sxq4n9l3y2uea",
+      "text": "27暑期实习",
+      "style": 0
+     },
+     {
+      "id": "b27rcx5p0m4z3vfb",
+      "text": "27日常实习",
+      "style": 26
+     },
+     {
+      "id": "b27oth6q1n5a4wgc",
+      "text": "其他",
+      "style": 12
+     }
+    ]
+   }
+  },
+  {
+   "id": "ckz87gOm",
+   "name": "岗位方向",
+   "type": "text"
+  },
+  {
+   "id": "kScSsgVU",
+   "name": "工作地点",
+   "type": "text"
+  },
+  {
+   "id": "pwXF1C9c",
+   "name": "优先级",
+   "type": "select",
+   "config": {
+    "options": [
+     {
+      "id": "pri0a7r2s8b5x9dh",
+      "text": "P0",
+      "style": 2
+     },
+     {
+      "id": "pri1b8s3t9c6y0ej",
+      "text": "P1",
+      "style": 0
+     },
+     {
+      "id": "pri2c9t4u0d7z1fk",
+      "text": "P2",
+      "style": 3
+     }
+    ]
+   }
+  },
+  {
+   "id": "aN2xK6oP",
+   "name": "投递状态",
+   "type": "select",
+   "config": {
+    "options": [
+     {
+      "id": "stt0d1u5v1e8a2gl",
+      "text": "待投递",
+      "style": 11
+     },
+     {
+      "id": "sty1e2v6w2f9b3hm",
+      "text": "已投递",
+      "style": 19
+     },
+     {
+      "id": "stn2f3w7x3g0c4in",
+      "text": "不投了",
+      "style": 14
+     }
+    ]
+   }
+  },
+  {
+   "id": "jNQzWfbz",
+   "name": "网申开始",
+   "type": "date"
+  },
+  {
+   "id": "Ean9zLEX",
+   "name": "截止日期",
+   "type": "date"
+  },
+  {
+   "id": "5H5FGiL4",
+   "name": "投递链接",
+   "type": "url"
+  },
+  {
+   "id": "vdt7k2IN",
+   "name": "来源",
+   "type": "text"
+  },
+  {
+   "id": "qifzAMoC",
+   "name": "备注",
+   "type": "text"
+  },
+  {
+   "id": "vIB5qW5w",
+   "name": "牛客ID",
+   "type": "text"
+  },
+  {
+   "id": "ilnLZZmy",
+   "name": "岗位",
+   "type": "text"
+  },
+  {
+   "id": "t0ChZOYJ",
+   "name": "当前阶段",
+   "type": "select",
+   "config": {
+    "options": [
+     {
+      "id": "ph1a3x8y4h1d5jos",
+      "text": "已投递",
+      "style": 0
+     },
+     {
+      "id": "ph2b4y9z5i2e6kpt",
+      "text": "笔试",
+      "style": 5
+     },
+     {
+      "id": "ph3c5z0a6j3f7lqu",
+      "text": "一面",
+      "style": 0
+     },
+     {
+      "id": "ph4d6a1b7k4g8mrv",
+      "text": "二面",
+      "style": 13
+     },
+     {
+      "id": "ph5e7b2c8l5h9nsw",
+      "text": "HR面",
+      "style": 15
+     },
+     {
+      "id": "ph6f8c3d9m6i0otx",
+      "text": "Offer",
+      "style": 3
+     },
+     {
+      "id": "ph7g9d4e0n7j1puy",
+      "text": "感谢信",
+      "style": 13
+     },
+     {
+      "id": "SEijMhyZQyf8",
+      "text": "已终止",
+      "style": 25
+     }
+    ]
+   }
+  },
+  {
+   "id": "WSfG7WvP",
+   "name": "投递日期",
+   "type": "date"
+  },
+  {
+   "id": "ATfhys0n",
+   "name": "下次节点",
+   "type": "date"
+  },
+  {
+   "id": "O8aE7weo",
+   "name": "节点说明",
+   "type": "text"
+  },
+  {
+   "id": "VWc5bvK7",
+   "name": "复盘笔记",
+   "type": "text"
+  },
+  {
+   "id": "ptSEe4aD",
+   "name": "相关链接",
+   "type": "url"
+  },
+  {
+   "id": "tyxIYvRH",
+   "name": "岗位名称",
+   "type": "text"
+  },
+  {
+   "id": "r9rng1n6",
+   "name": "薪资",
+   "type": "text"
+  },
+  {
+   "id": "aLQzxyQh",
+   "name": "岗位要求",
+   "type": "text"
+  }
+ ]
+}

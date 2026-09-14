@@ -53,6 +53,7 @@ nav.tabbar .tab:not([aria-current]):hover{background:rgba(59,91,253,.08);color:v
 nav.tabbar .sync{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);margin-left:auto;flex:none;background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:999px;padding:5px 11px;white-space:nowrap}
 nav.tabbar .sync .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(10,157,108,.15)}
 nav.tabbar .sync.off .dot{background:var(--red);box-shadow:0 0 0 3px rgba(229,72,77,.15)}
+nav.tabbar .sync.warn .dot{background:var(--orange);box-shadow:0 0 0 3px rgba(229,143,11,.15)}
 /* ---------- Hero 横幅 ---------- */
 .hero{max-width:1000px;margin:18px auto 0;padding:0 16px}
 .hero .hero-in{border-radius:20px;padding:22px 24px;color:#fff;display:flex;align-items:center;gap:16px;position:relative;overflow:hidden;background:var(--grad);box-shadow:0 10px 28px rgba(59,91,253,.30)}
@@ -230,6 +231,9 @@ var MY_CITY_KW={MY_CITY_KW};
 var SOE_KW={SOE_KW};
 
 function $(id){{return document.getElementById(id)}}
+// 不用正则的 trim：本文件是 Python 模板串，JS 正则里的反斜杠转义（空白/Unicode/词边界等）
+// 会被 Python 先解析掉，轻则丢字符重则整页脚本失效（见 pages/check_escapes.py）。纯 charCode 判断最稳。
+function trimStr(s){{s=String(s==null?'':s);var a=0,b=s.length;while(a<b&&s.charCodeAt(a)<=32)a++;while(b>a&&s.charCodeAt(b-1)<=32)b--;return s.slice(a,b)}}
 function esc(s){{return String(s==null?'':s).replace(/[&<>""]/g,function(c){{return {{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}}[c]}})}}
 function dayStr(d){{var p=function(n){{return (n<10?'0':'')+n}};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())}}
 function today(){{return dayStr(new Date())}}
@@ -247,43 +251,77 @@ function recId(r){{return (r&&(r._id||r.record_id||r.id))||''}}
 function webSearchUrl(q){{return 'https://www.bing.com/search?q='+encodeURIComponent(q+' 校招 网申入口')}}
 function searchUrl(q){{return 'https://www.nowcoder.com/search/all?query='+encodeURIComponent(q+' 校招')}}
 
-function isSOE(j){{var c=fieldText(j,'公司');for(var i=0;i<SOE_KW.length;i++){{if(c.indexOf(SOE_KW[i])>=0)return true}}return false}}
-function mineMatch(j){{var c=fieldText(j,'岗位方向'),hit=false;for(var i=0;i<CAREER_KW.length;i++){{if(c.indexOf(CAREER_KW[i])>=0){{hit=true;break}}}}if(!hit)return false;var loc=fieldText(j,'工作地点');for(var j2=0;j2<MY_CITY_KW.length;j2++){{if(loc.indexOf(MY_CITY_KW[j2])>=0)return true}}return false}}
+// 分类结果缓存：列表每次刷新都会对全部岗位重跑关键词扫描（600+ 条 × 56 个关键词），
+// 缓存后同一批记录只算一次；loadData 成功时整体失效重建。
+var _clsCache={{}};
+function recKey(j){{return recId(j)||(fieldText(j,'公司')+'|'+fieldText(j,'岗位方向')+'|'+fieldText(j,'工作地点'))}}
+function isSOE(j){{var k='s'+recKey(j);if(k in _clsCache)return _clsCache[k];var c=fieldText(j,'公司'),v=false;for(var i=0;i<SOE_KW.length;i++){{if(c.indexOf(SOE_KW[i])>=0){{v=true;break}}}}_clsCache[k]=v;return v}}
+function mineMatch(j){{var k='m'+recKey(j);if(k in _clsCache)return _clsCache[k];var c=fieldText(j,'岗位方向'),v=false;for(var i=0;i<CAREER_KW.length;i++){{if(c.indexOf(CAREER_KW[i])>=0){{v=true;break}}}}if(v){{v=false;var loc=fieldText(j,'工作地点');for(var j2=0;j2<MY_CITY_KW.length;j2++){{if(loc.indexOf(MY_CITY_KW[j2])>=0){{v=true;break}}}}}}_clsCache[k]=v;return v}}
+// 牛客公司 ID（用于企业主页/面经/真题深链），非数字一律丢弃避免拼出坏链接
+function nkId(rec){{var v=rec&&rec['牛客ID'];if(v==null)return '';if(typeof v==='object')v=v.text||v.value||'';return String(v).replace(/[^0-9]/g,'')}}
 function jobStatus(j){{return j['投递状态']?optText('投递状态',typeof j['投递状态']==='object'?j['投递状态'].text||'':String(j['投递状态'])):'待投递'}}
 function appStage(a){{return a['当前阶段']?optText('当前阶段',typeof a['当前阶段']==='object'?a['当前阶段'].text||'':String(a['当前阶段'])):'已投递'}}
 
 function showLinkModal(link){{var m=$('lnkModal');if(!m){{alert('投递链接：'+link);return}}$('lnkTxt').textContent=link;m.style.display='flex';$('lnkCopy').onclick=function(){{var done=function(){{$('lnkCopy').textContent='已复制'}};try{{var ta=document.createElement('textarea');ta.value=link;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();var ok=document.execCommand('copy');document.body.removeChild(ta);if(ok){{done();return}}}}catch(e){{}}if(navigator.clipboard&&navigator.clipboard.writeText){{navigator.clipboard.writeText(link).then(done)}}}}}};
-function openLink(link){{if(!link){{alert('这条记录没有填链接');return}}var w=null;try{{w=window.open(link,'_blank')}}catch(e){{}}if(!w)showLinkModal(link);}}
+// 是否已是完整 http(s) 链接 / 是否长得像域名（都不用正则：本文件是 Python 模板串，
+// JS 正则里的反斜杠转义会被 Python 先解析掉，可能悄悄改坏脚本）
+function isHttpUrl(u){{u=String(u).toLowerCase();return u.indexOf('http://')===0||u.indexOf('https://')===0}}
+function looksDomain(u){{
+  u=String(u);
+  if(u.indexOf(' ')>-1||u.indexOf(':')>-1||u.indexOf('@')>-1)return false;
+  var cut=u.length,k;
+  for(k=0;k<u.length;k++){{var c=u.charAt(k);if(c==='/'||c==='?'||c==='#'){{cut=k;break}}}}
+  var host=u.slice(0,cut),dot=host.indexOf('.');
+  return dot>0&&dot<host.length-2;
+}}
+// 外链统一出口：只放行 http(s)，挡掉 javascript:/data: 等协议；新窗口一律 noopener+noreferrer，
+// 避免被打开页面通过 window.opener 反向拿到本页的 SDK 与全部投递数据。
+function openLink(link){{if(!link){{alert('这条记录没有填链接');return}}var safe=trimStr(link);if(!isHttpUrl(safe)){{if(looksDomain(safe))safe='https://'+safe;else{{alert('链接协议不受支持，已阻止打开');return}}}}var w=null;try{{w=window.open(safe,'_blank','noopener,noreferrer')}}catch(e){{}}if(!w)showLinkModal(safe);}}
+// 顶部同步状态点：ok / warn（本次拉取失败但可重试）/ err / off（无 SDK）
+function setSync(state){{var b=$('syncBox'),t=$('syncTxt');if(!b)return;b.className='sync'+(state==='ok'?'':state==='warn'?' warn':' off');if(t)t.textContent=state==='ok'?'已同步':state==='warn'?'同步异常':state==='err'?'同步失败':'离线模式';}}
 function jobLink(j){{return urlVal(j['投递链接']).link}}
 function jobJump(j){{var l=jobLink(j);var c=plain(j['公司']);return l||searchUrl(c)||webSearchUrl(c)}}
 
 /* ---------- 公司情报面板 ---------- */
-function intelLinks(c){{
-  var e=encodeURIComponent;
-  return [
-    {{sec:'面经与入职经验',items:[
-      {{t:'牛客 · 面经搜索',d:'笔试真题、面试流程、通过率、入职体验帖',u:'https://www.nowcoder.com/search/all?query='+e(c+' 面经')}},
-      {{t:'牛客 · 公司讨论区',d:'薪资爆料、offer 对比、加班情况',u:'https://www.nowcoder.com/search/all?query='+e(c+' 公司')}},
-      {{t:'全网经验帖聚合',d:'知乎/博客的面经与校招经验搜索',u:'https://www.bing.com/search?q='+e(c+' 校招 面经 入职体验')}}
-    ]}},
-    {{sec:'公司背景',items:[
-      {{t:'百度百科',d:'主营业务、规模、母公司背景',u:'https://baike.baidu.com/item/'+e(c)}},
-      {{t:'爱企查 · 工商信息',d:'股权结构、注册信息、是否国企/经营风险',u:'https://aiqicha.baidu.com/s?q='+e(c)}},
-      {{t:'官方网站',d:'找官方招聘频道与业务线介绍',u:'https://www.bing.com/search?q='+e(c+' 官网 招聘')}}
-    ]}},
-    {{sec:'薪资与评价',items:[
-      {{t:'看准网',d:'员工评价、面试题库、薪资爆料',u:'https://www.kanzhun.com/search/?query='+e(c)}},
-      {{t:'职友集',d:'薪资统计、招聘趋势、公司排行',u:'https://www.jobui.com/search/?keyword='+e(c)}}
-    ]}}
-  ];
+/* nk = 牛客 companyId（表里的「牛客ID」字段）。有 ID 时走牛客企业档案精准深链，
+   没有则退化为牛客全网检索，保证任何一条记录都有可用的情报入口。 */
+function intelLinks(c,nk){{
+  var e=encodeURIComponent,g=[];
+  if(nk){{
+    var base='https://www.nowcoder.com/enterprise/'+e(nk);
+    g.push({{sec:'牛客企业档案 · 精准直达',items:[
+      {{t:'牛客 · 企业主页',d:'该公司在牛客的校招职位与招聘动态',u:base}},
+      {{t:'牛客 · 面经',d:'同家公司历年面试流程与面试题回忆帖',u:base+'/interview'}},
+      {{t:'牛客 · 笔试真题',d:'该公司笔试题库，可在线自测',u:base+'/question/company'}},
+      {{t:'牛客 · 薪资爆料',d:'各职级 offer 薪资、涨薪与年终奖信息',u:base+'/salary'}},
+      {{t:'牛客 · 讨论区',d:'offer 对比、加班与部门氛围讨论',u:base+'/discussion'}}
+    ]}});
+  }}
+  g.push({{sec:'牛客全网检索',items:[
+    {{t:'牛客 · 面经搜索',d:'笔试真题、面试流程、通过率、入职体验帖',u:'https://www.nowcoder.com/search/all?query='+e(c+' 面经')}},
+    {{t:'牛客 · 公司讨论区',d:'薪资爆料、offer 对比、加班情况',u:'https://www.nowcoder.com/search/all?query='+e(c+' 公司')}},
+    {{t:'牛客 · 面经专区',d:'牛客经验分享频道，按公司/岗位翻帖',u:'https://www.nowcoder.com/experience/0?query='+e(c)}}
+  ]}});
+  g.push({{sec:'公司背景',items:[
+    {{t:'百度百科',d:'主营业务、规模、母公司背景',u:'https://baike.baidu.com/item/'+e(c)}},
+    {{t:'爱企查 · 工商信息',d:'股权结构、注册信息、是否国企/经营风险',u:'https://aiqicha.baidu.com/s?q='+e(c)}},
+    {{t:'官方网站',d:'找官方招聘频道与业务线介绍',u:'https://www.bing.com/search?q='+e(c+' 官网 招聘')}}
+  ]}});
+  g.push({{sec:'薪资与评价',items:[
+    {{t:'看准网',d:'员工评价、面试题库、薪资爆料',u:'https://www.kanzhun.com/search/?query='+e(c)}},
+    {{t:'职友集',d:'薪资统计、招聘趋势、公司排行',u:'https://www.jobui.com/search/?keyword='+e(c)}},
+    {{t:'全网经验帖聚合',d:'知乎/博客的面经与校招经验搜索',u:'https://www.bing.com/search?q='+e(c+' 校招 面经 入职体验')}}
+  ]}});
+  return g;
 }}
-function showIntel(company){{
+function showIntel(company,nk){{
   var c=(company||'').trim()||'未命名公司';
+  nk=nk==null?'':String(typeof nk==='object'?(nk.text||''):nk).replace(/[^0-9]/g,'');
   var m=$('intelModal');
   if(!m){{openLink(webSearchUrl(c));return}}
   $('intelName').textContent=c+' · 公司情报';
   var html='';
-  intelLinks(c).forEach(function(g){{
+  intelLinks(c,nk).forEach(function(g){{
     html+='<div class="isec">'+g.sec+'</div>';
     g.items.forEach(function(it){{
       html+='<div class="iitem"><div class="iinfo"><b>'+it.t+'</b><span>'+it.d+'</span></div>'
@@ -307,7 +345,7 @@ function bindExpress(){{
     b.addEventListener('click',function(){{openLink(b.getAttribute('data-u'))}});
   }});
   Array.prototype.forEach.call(document.querySelectorAll('.xintel'),function(b){{
-    b.addEventListener('click',function(){{showIntel(b.getAttribute('data-c'))}});
+    b.addEventListener('click',function(){{showIntel(b.getAttribute('data-c'),b.getAttribute('data-nk'))}});
   }});
 }}
 
@@ -316,14 +354,61 @@ function setText(id,v){{var el=$(id);if(el)el.textContent=v}}
 function markBindable(el,dbid){{el.setAttribute('data-sp-bindable','database');el.setAttribute('data-sp-database-id',dbid)}}
 
 /* ---------- 表单缓存（DSDK008） ---------- */
+/* 只缓存本地草稿用途的表单值，且不上云：password/file/data-no-cache 以及命中
+   密码·身份证·token·key 类字段名一律跳过；空值即删除（避免残留旧内容）；单条截断 500 字。 */
 var CACHE_KEY='wb_qiuzhao_form_v1';
+var CACHE_SKIP=/password|passwd|secret|token|api[-_]?key|身份证|银行卡/i;
+var CACHE_MAX=65536;
 var cacheTimer=null;
-function cacheSaveForm(fid){{try{{var f=$(fid);if(!f)return;var data=JSON.parse(localStorage.getItem(CACHE_KEY)||'{{}}');Array.prototype.forEach.call(f.querySelectorAll('[name]'),function(el){{if(el.type==='password'||el.type==='file')return;data[fid+'.'+el.name]=el.value}});localStorage.setItem(CACHE_KEY,JSON.stringify(data))}}catch(e){{}}}}
+function cacheSaveForm(fid){{try{{var f=$(fid);if(!f)return;var data=JSON.parse(localStorage.getItem(CACHE_KEY)||'{{}}');Array.prototype.forEach.call(f.querySelectorAll('[name]'),function(el){{if(el.type==='password'||el.type==='file')return;if(el.hasAttribute('data-no-cache'))return;if(CACHE_SKIP.test(el.name||'')||CACHE_SKIP.test(el.getAttribute('data-field')||''))return;var k=fid+'.'+el.name,v=String(el.value==null?'':el.value).slice(0,500);if(!v){{delete data[k]}}else{{data[k]=v}}}});var s=JSON.stringify(data);if(s.length>CACHE_MAX)return;localStorage.setItem(CACHE_KEY,s)}}catch(e){{}}}}
 function cacheDebounce(fid){{if(cacheTimer)clearTimeout(cacheTimer);cacheTimer=setTimeout(function(){{cacheSaveForm(fid)}},300)}}
 function cacheRestoreForm(fid){{try{{var data=JSON.parse(localStorage.getItem(CACHE_KEY)||'{{}}');var f=$(fid);if(!f)return;Array.prototype.forEach.call(f.querySelectorAll('[name]'),function(el){{var k=fid+'.'+el.name;if(data[k]!==undefined&&el.type!=='password'&&el.type!=='file')el.value=data[k]}})}}catch(e){{}}}}
 function cacheClearForm(fid){{try{{var data=JSON.parse(localStorage.getItem(CACHE_KEY)||'{{}}');Array.prototype.forEach.call(Object.keys(data),function(k){{if(k.indexOf(fid+'.')===0)delete data[k]}});localStorage.setItem(CACHE_KEY,JSON.stringify(data))}}catch(e){{}}}}
 function bindFormCache(fid){{var f=$(fid);if(!f)return;f.addEventListener('input',function(){{cacheDebounce(fid)}});f.addEventListener('change',function(){{cacheDebounce(fid)}});cacheRestoreForm(fid);}}
 function cacheWipeAll(){{try{{localStorage.removeItem(CACHE_KEY)}}catch(e){{}}}}
+
+/* ---------- 连接与实时订阅 ---------- */
+var DB_READY=null;      /* 由各页 init()/boot() 注入：重跑「取 schema → 渲染下拉 → 拉全量」 */
+var _updBound=false,_updTimer=null;
+/* 数据变更订阅：他人在表格改 / 其他端提交 / 脚本批量写都会回调（平台只通知「变了」，内容自己查）。
+   能力探测后再注册，整页只注册一次（DSDK013）；700ms 去抖；刚拉过数（1200ms 内）直接跳过——
+   本页每次写入后自己会调 reloadAll()，订阅事件只是回声，跳过可避免一次操作拉两轮数据。
+   旧环境无 onUpdated → 静默降级，页面照常手动刷新。 */
+function subscribeUpdates(){{
+  if(_updBound||!db)return;
+  if(typeof db.onUpdated!=='function')return;
+  _updBound=true;
+  try{{
+    db.onUpdated(function(payload){{
+      var ids=(payload&&payload.databaseIds)||[];
+      if(!ids.length)return;
+      if(Date.now()-_lastLoadAt<1200)return;
+      if(_updTimer)clearTimeout(_updTimer);
+      _updTimer=setTimeout(function(){{_updTimer=null;reloadAll()}},700);
+    }});
+  }}catch(e){{_updBound=false}}
+}}
+/* 取三表 schema → 合并 select 选项 → 触发各模块 setup → 拉全量数据 */
+function initSchema(after){{
+  return Promise.all([db.getSchema({{databaseId:'GgZ71tywhs4HEZytFSqXTP'}}),db.getSchema({{databaseId:'oBGkMFTv9Xv4Xn5gFOK18S'}}),db.getSchema({{databaseId:'tgH8096uENTaIj8RSY9qm5'}})]).then(function(ss){{
+    ss.forEach(function(schema){{(schema.properties||[]).forEach(function(f){{if((f.type==='select'||f.type==='multi_select')&&f.config&&f.config.options){{OPTS[f.name]=f.config.options}}}})}});
+    subscribeUpdates();
+    if(after)after();
+    return reloadAll();
+  }});
+}}
+/* 离线横幅「重试连接」：重新探测 SDK → 重跑就绪链路；无就绪链路时退回整页刷新 */
+function retryConnect(){{
+  var b=$('offRetry'),o=$('offBanner');
+  var done=function(ok){{if(b){{b.disabled=false;b.textContent='重试连接'}}if(ok&&o)o.style.display='none'}};
+  if(b){{b.disabled=true;b.textContent='正在重连…'}}
+  db=window.__SMART_PAGE__&&window.__SMART_PAGE__.database;
+  if(!db){{setSync('off');done(false);return}}
+  offline=false;
+  if(!DB_READY){{location.reload();return}}
+  Promise.resolve(DB_READY()).then(function(){{var ok=!_syncFailed;setSync(ok?'ok':'warn');done(ok)}},function(){{setSync('warn');done(false)}});
+}}
+document.addEventListener('click',function(e){{var t=e.target;if(t&&t.id==='offRetry')retryConnect()}});
 """.format(JOBS_ID=JOBS_ID, APPS_ID=APPS_ID, INTERN_ID=INTERN_ID, CAREER_KW=CAREER_KW, MY_CITY_KW=MY_CITY_KW, SOE_KW=SOE_KW)
 
 
@@ -494,8 +579,8 @@ function renderToday(){
     else{var al=urlVal(it.rec['相关链接']).link;btns='<button class="btn btn-sm tgo '+(al?'btn-ghost':'btn-search')+'">'+(al?'查看链接':'搜公司')+'</button>';}
     btns+='<button class="btn btn-sm btn-ghost tintel">公司情报</button><button class="btn btn-sm btn-go tdone">'+(it.kind==='job'?'标记已投':'节点已完成')+'</button><button class="btn btn-sm btn-gray tdrop">'+(it.kind==='job'?'不投了':'去掉这条')+'</button>';
     d.innerHTML='<span class="badge">'+esc(it.badge)+'</span><div class="tinfo"><b>'+esc(it.title)+'</b><span>'+esc(it.meta)+'</span></div><div class="btns">'+btns+'</div>';
-    d.querySelector('.tgo').addEventListener('click',function(){if(it.kind==='job'){var l=jobLink(it.rec);if(l){openLink(l)}else{showIntel(fieldText(it.rec,'公司'))}}else{var al=urlVal(it.rec['相关链接']).link;if(al){openLink(al)}else{showIntel(fieldText(it.rec,'公司'))}}});
-    d.querySelector('.tintel').addEventListener('click',function(){showIntel(fieldText(it.rec,'公司'))});
+    d.querySelector('.tgo').addEventListener('click',function(){if(it.kind==='job'){var l=jobLink(it.rec);if(l){openLink(l)}else{showIntel(fieldText(it.rec,'公司'),nkId(it.rec))}}else{var al=urlVal(it.rec['相关链接']).link;if(al){openLink(al)}else{showIntel(fieldText(it.rec,'公司'),nkId(it.rec))}}});
+    d.querySelector('.tintel').addEventListener('click',function(){showIntel(fieldText(it.rec,'公司'),nkId(it.rec))});
     d.querySelector('.tdone').addEventListener('click',function(){todayDone(it,this)});
     d.querySelector('.tdrop').addEventListener('click',function(){todayDrop(it,this)});
     box.appendChild(d);
@@ -508,11 +593,11 @@ function todayDone(it,btn){
     db.updateRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(it.rec),properties:{'投递状态':{select:'已投递'}}})
       .then(function(){return todaySyncTracking(it.rec)})
       .then(reloadAll)
-      .catch(function(e){console.error('[database] 标记已投失败:',e);if(btn)btn.disabled=false;alert('更新失败，请刷新后重试')});
+      .catch(function(e){console.error('[database] 标记已投失败:'+((e&&e.message)||String(e)));if(btn)btn.disabled=false;alert('更新失败，请刷新后重试')});
   }else{
     db.updateRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(it.rec),properties:{'下次节点':{date:null}}})
       .then(reloadAll)
-      .catch(function(e){console.error('[database] 清空节点失败:',e);if(btn)btn.disabled=false;alert('更新失败，请刷新后重试')});
+      .catch(function(e){console.error('[database] 清空节点失败:'+((e&&e.message)||String(e)));if(btn)btn.disabled=false;alert('更新失败，请刷新后重试')});
   }
 }
 /* 今日处理 → 去掉：岗位=不投了；投递跟踪=已终止（两条都从今日列表消失，可随时改回） */
@@ -526,11 +611,11 @@ function todayDrop(it,btn){
   if(it.kind==='job'){
     db.updateRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(it.rec),properties:{'投递状态':{select:'不投了'}}})
       .then(reloadAll)
-      .catch(function(e){console.error('[database] 标记失败:',e);if(btn)btn.disabled=false;alert('更新失败，请刷新后重试')});
+      .catch(function(e){console.error('[database] 标记失败:'+((e&&e.message)||String(e)));if(btn)btn.disabled=false;alert('更新失败，请刷新后重试')});
   }else{
     db.updateRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(it.rec),properties:{'当前阶段':{select:'已终止'},'下次节点':{date:null}}})
       .then(reloadAll)
-      .catch(function(e){console.error('[database] 标记失败:',e);if(btn)btn.disabled=false;alert('更新失败，请刷新后重试')});
+      .catch(function(e){console.error('[database] 标记失败:'+((e&&e.message)||String(e)));if(btn)btn.disabled=false;alert('更新失败，请刷新后重试')});
   }
 }
 /* 岗位标记已投后，若跟踪表还没有这家公司就自动建档 */
@@ -540,7 +625,7 @@ function todaySyncTracking(rec){
   if(exists)return Promise.resolve();
   var p={'公司':{text:company},'岗位':{text:fieldText(rec,'岗位方向')||'校招岗位'},'当前阶段':{select:'已投递'},'投递日期':{date:today()},'节点说明':{text:'由今日处理一键标记自动生成'}};
   var u=urlVal(rec['投递链接']);if(u.link)p['相关链接']={url:{text:'网申入口',link:u.link}};
-  return db.addRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',properties:p}).catch(function(e){console.error('[database] 建档失败:',e)});
+  return db.addRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',properties:p}).catch(function(e){console.error('[database] 建档失败:'+((e&&e.message)||String(e)))});
 }
 function renderStats(){
   var w=0,done=0,ddl=0,live=0,t=today();
@@ -588,14 +673,14 @@ function renderApps(){
     var card=$('tplApp').cloneNode(true);card.removeAttribute('id');
     setFieldText(card,'公司',a['公司'],APPS_ID);setFieldText(card,'岗位',a['岗位'],APPS_ID);setFieldText(card,'当前阶段',appStage(a),APPS_ID);
     setFieldText(card,'投递日期',dOnly(a['投递日期']),APPS_ID);setFieldText(card,'下次节点',dOnly(a['下次节点']),APPS_ID);setFieldText(card,'节点说明',a['节点说明'],APPS_ID);setFieldText(card,'复盘笔记',a['复盘笔记'],APPS_ID);setFieldText(card,'相关链接',a['相关链接'],APPS_ID);
-    card.querySelector('[data-field="相关链接"]').addEventListener('click',function(e){e.preventDefault();var l=urlVal(a['相关链接']).link;if(l){openLink(l)}else{showIntel(fieldText(a,'公司'))}});
+    card.querySelector('[data-field="相关链接"]').addEventListener('click',function(e){e.preventDefault();var l=urlVal(a['相关链接']).link;if(l){openLink(l)}else{showIntel(fieldText(a,'公司'),nkId(a))}});
     var nd=dOnly(a['下次节点']);if(nd){var nEl=card.querySelectorAll('[data-field="下次节点"]')[0];var n=diffDays(today(),nd);if(n<0&&appStage(a)!=='Offer'&&appStage(a)!=='感谢信'){nEl.style.color='var(--red)';nEl.textContent=nd+'（已过期）'}}
     var sel=card.querySelector('.astage');sel.innerHTML='';
     var opt0=document.createElement('option');opt0.value='';opt0.textContent='改阶段';sel.appendChild(opt0);
     STAGES.concat([DROP_STAGE]).forEach(function(s){var o=document.createElement('option');o.value=optId('当前阶段',s);o.textContent=s;sel.appendChild(o)});
-    sel.addEventListener('change',function(){if(!sel.value)return;sel.disabled=true;db.updateRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(a),properties:{'当前阶段':{select:sel.value}}}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:',e);sel.disabled=false})});
-    card.querySelector('.anote').addEventListener('click',function(){var v=prompt('复盘笔记：',plain(a['复盘笔记']));if(v===null)return;db.updateRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(a),properties:{'复盘笔记':{text:v}}}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:',e)})});
-    card.querySelector('.adel').addEventListener('click',function(){if(!confirm('确定删除「'+plain(a['公司'])+'」这条记录吗？'))return;db.deleteRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(a)}).then(reloadAll).catch(function(e){console.error('[database] 删除失败:',e)})});
+    sel.addEventListener('change',function(){if(!sel.value)return;sel.disabled=true;db.updateRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(a),properties:{'当前阶段':{select:sel.value}}}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:'+((e&&e.message)||String(e)));sel.disabled=false})});
+    card.querySelector('.anote').addEventListener('click',function(){var v=prompt('复盘笔记：',plain(a['复盘笔记']));if(v===null)return;db.updateRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(a),properties:{'复盘笔记':{text:v}}}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:'+((e&&e.message)||String(e)))})});
+    card.querySelector('.adel').addEventListener('click',function(){if(!confirm('确定删除「'+plain(a['公司'])+'」这条记录吗？'))return;db.deleteRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(a)}).then(reloadAll).catch(function(e){console.error('[database] 删除失败:'+((e&&e.message)||String(e)))})});
     box.appendChild(card);
   });
 }
@@ -615,7 +700,7 @@ function bindSubmitApp(){
     var nd=form.querySelector('[name="nextdate"]').value;if(nd)p['下次节点']={date:nd};
     var dd=form.querySelector('[name="nodedesc"]').value.trim();if(dd)p['节点说明']={text:dd};
     var al=form.querySelector('[name="alnk"]').value.trim();if(al)p['相关链接']={url:{text:al,link:al}};
-    db.addRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',properties:p}).then(function(){form.reset();return reloadAll()}).catch(function(err){console.error('[database] 提交失败:',err);alert('提交失败，请稍后重试')}).finally(function(){if(btn){btn.disabled=false;btn.textContent='保存记录'}});
+    db.addRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',properties:p}).then(function(){form.reset();return reloadAll()}).catch(function(err){console.error('[database] 提交失败:'+((err&&err.message)||String(err)));alert('提交失败，请稍后重试')}).finally(function(){if(btn){btn.disabled=false;btn.textContent='保存记录'}});
   });
 }
 
@@ -624,28 +709,23 @@ function init(){
   bindIntelClose();
   bindExpress();
   if(!db){goOffline();return}
-  setText('syncTxt','已同步');
+  setSync('ok');
   bindSubmitApp();
   bindFormCache('appForm');
   bindQuickIntel();
   $('lnkClose').addEventListener('click',function(){$('lnkModal').style.display='none'});
   $('lnkModal').addEventListener('click',function(e){if(e.target===$('lnkModal'))$('lnkModal').style.display='none'});
   $('todayMine').addEventListener('change',function(){state.todayMine=$('todayMine').checked;renderToday()});
-  Promise.all([
-    db.getSchema({databaseId:'GgZ71tywhs4HEZytFSqXTP'}),
-    db.getSchema({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S'}),
-    db.getSchema({databaseId:'tgH8096uENTaIj8RSY9qm5'})
-  ]).then(function(ss){
-    ss.forEach(function(schema){(schema.properties||[]).forEach(function(f){if((f.type==='select'||f.type==='multi_select')&&f.config&&f.config.options){OPTS[f.name]=f.config.options}})});
+  DB_READY=function(){return initSchema(function(){
     function fillStage(){
       var sel=$('fStage');if(!sel)return;sel.innerHTML='';var o0=document.createElement('option');o0.value='';o0.textContent='请选择';sel.appendChild(o0);
       (OPTS['当前阶段']||[]).forEach(function(o){var oo=document.createElement('option');oo.value=o.id;oo.textContent=o.text;sel.appendChild(oo)});
     }
     fillStage();
-    return reloadAll();
-  }).catch(function(e){console.error('[database] 初始化失败:',e);goOffline()});
+  })};
+  DB_READY().catch(function(e){console.error('[database] 初始化失败:'+((e&&e.message)||String(e)));goOffline()});
 }
-function goOffline(){offline=true;$('syncBox').className='sync off';setText('syncTxt','离线模式');$('offBanner').style.display='block';refreshAll()}
+function goOffline(){offline=true;setSync('off');$('offBanner').style.display='block';refreshAll()}
 """
     hero = hero_html("", "求职总览台", "今天的投递节奏、逾期提醒和全局统计都在这里", "overview")
     return _wrap_page("总览", body, nav, page_js, urls, active="overview", hero=hero)
@@ -746,8 +826,8 @@ function buildJobCard(j){
   var dEl=card.querySelector('[data-field="截止日期"]');
   var dd=dOnly(j['截止日期']);
   if(dd){var n=diffDays(today(),dd);dEl.textContent=(n<0?'已截止(' + dd + ')':(n===0?'今天截止':n+'天后截止(' + dd + ')'));if(n<0)dEl.style.color='var(--red)';else if(n<=3)dEl.style.color='var(--orange)';}else{dEl.textContent='截止时间待定';}
-  var lnk=card.querySelector('[data-field="投递链接"]');lnk.addEventListener('click',function(e){e.preventDefault();var l=jobLink(j);if(l){openLink(l)}else{showIntel(fieldText(j,'公司'))}});
-  card.querySelector('.jsearch').addEventListener('click',function(){showIntel(fieldText(j,'公司'))});
+  var lnk=card.querySelector('[data-field="投递链接"]');lnk.addEventListener('click',function(e){e.preventDefault();var l=jobLink(j);if(l){openLink(l)}else{showIntel(fieldText(j,'公司'),nkId(j))}});
+  card.querySelector('.jsearch').addEventListener('click',function(){showIntel(fieldText(j,'公司'),nkId(j))});
   card.querySelector('.jmark').addEventListener('click',function(){markApplied(j);});
   var jst=card.querySelector('.jstatus');jst.innerHTML='';
   (OPTS['投递状态']||[]).forEach(function(o){var op=document.createElement('option');op.value=o.text;op.textContent=o.text;jst.appendChild(op)});
@@ -755,9 +835,9 @@ function buildJobCard(j){
   jst.addEventListener('change',function(){
     if(!jst.value||jst.value===st){jst.value=st;return}
     jst.disabled=true;
-    db.updateRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(j),properties:{'投递状态':{select:jst.value}}}).then(function(){return jst.value==='已投递'?syncTracking(j):null}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:',e);jst.disabled=false});
+    db.updateRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(j),properties:{'投递状态':{select:jst.value}}}).then(function(){return jst.value==='已投递'?syncTracking(j):null}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:'+((e&&e.message)||String(e)));jst.disabled=false});
   });
-  card.querySelector('.jdel').addEventListener('click',function(){if(!confirm('确定删除「'+plain(j['公司'])+'」这条岗位吗？'))return;db.deleteRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(j)}).then(reloadAll).catch(function(e){console.error('[database] 删除失败:',e)})});
+  card.querySelector('.jdel').addEventListener('click',function(){if(!confirm('确定删除「'+plain(j['公司'])+'」这条岗位吗？'))return;db.deleteRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(j)}).then(reloadAll).catch(function(e){console.error('[database] 删除失败:'+((e&&e.message)||String(e)))})});
   return card;
 }
 function syncTracking(rec){
@@ -765,10 +845,10 @@ function syncTracking(rec){
   var exists=state.apps.some(function(a){return fieldText(a,'公司')===company});if(exists)return Promise.resolve();
   var p={'公司':{text:company},'岗位':{text:fieldText(rec,'岗位方向')||'校招岗位'},'当前阶段':{select:'已投递'},'投递日期':{date:today()},'节点说明':{text:'由岗位看板一键标记自动生成'}};
   var u=urlVal(rec['投递链接']);if(u.link)p['相关链接']={url:{text:'网申入口',link:u.link}};
-  return db.addRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',properties:p}).catch(function(e){console.error('[database] 投递跟踪写入失败:',e)});
+  return db.addRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',properties:p}).catch(function(e){console.error('[database] 投递跟踪写入失败:'+((e&&e.message)||String(e)))});
 }
 function markApplied(rec){
-  db.updateRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(rec),properties:{'投递状态':{select:'已投递'}}}).then(function(){return syncTracking(rec)}).then(reloadAll).catch(function(e){console.error('[database] 标已投失败:',e);alert('更新失败，请刷新页面重试');});
+  db.updateRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(rec),properties:{'投递状态':{select:'已投递'}}}).then(function(){return syncTracking(rec)}).then(reloadAll).catch(function(e){console.error('[database] 标已投失败:'+((e&&e.message)||String(e)));alert('更新失败，请刷新页面重试');});
 }
 function renderJobs(){
   var box=$('jobCards'),rows=filteredJobs();
@@ -796,7 +876,7 @@ function bindSubmitJob(){
     var dl=form.querySelector('[name="deadline"]').value;if(dl)p['截止日期']={date:dl};
     var jl=form.querySelector('[name="jlink"]').value.trim();if(jl)p['投递链接']={url:{text:jl,link:jl}};
     var jn=form.querySelector('[name="jnote"]').value.trim();if(jn)p['备注']={text:jn};
-    db.addRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',properties:p}).then(function(){form.reset();return reloadAll()}).catch(function(err){console.error('[database] 提交失败:',err);alert('提交失败，请稍后重试')}).finally(function(){if(btn){btn.disabled=false;btn.textContent='保存岗位'}});
+    db.addRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',properties:p}).then(function(){form.reset();return reloadAll()}).catch(function(err){console.error('[database] 提交失败:'+((err&&err.message)||String(err)));alert('提交失败，请稍后重试')}).finally(function(){if(btn){btn.disabled=false;btn.textContent='保存岗位'}});
   });
 }
 function fillSelect(selId,field,withAll){
@@ -811,7 +891,7 @@ function init(){
   bindIntelClose();
   bindExpress();
   if(!db){goOffline();return}
-  setText('syncTxt','已同步');
+  setSync('ok');
   bindSubmitJob();
   $('lnkClose').addEventListener('click',function(){$('lnkModal').style.display='none'});
   $('lnkModal').addEventListener('click',function(e){if(e.target===$('lnkModal'))$('lnkModal').style.display='none'});
@@ -823,13 +903,10 @@ function init(){
   Array.prototype.forEach.call(document.querySelectorAll('#batchChips .chip'),function(ch){
     ch.addEventListener('click',function(){state.batchMode=ch.getAttribute('data-mode');Array.prototype.forEach.call(document.querySelectorAll('#batchChips .chip'),function(x){x.className='chip'+(x===ch?' active':'')});renderJobs();});
   });
-  Promise.all([db.getSchema({databaseId:'GgZ71tywhs4HEZytFSqXTP'}),db.getSchema({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S'}),db.getSchema({databaseId:'tgH8096uENTaIj8RSY9qm5'})]).then(function(ss){
-    ss.forEach(function(schema){(schema.properties||[]).forEach(function(f){if((f.type==='select'||f.type==='multi_select')&&f.config&&f.config.options){OPTS[f.name]=f.config.options}})});
-    renderSelectOptions();
-    return reloadAll();
-  }).catch(function(e){console.error('[database] 初始化失败:',e);goOffline()});
+  DB_READY=function(){return initSchema(function(){renderSelectOptions()})};
+  DB_READY().catch(function(e){console.error('[database] 初始化失败:'+((e&&e.message)||String(e)));goOffline()});
 }
-function goOffline(){offline=true;$('syncBox').className='sync off';setText('syncTxt','离线模式');$('offBanner').style.display='block';refreshAll()}
+function goOffline(){offline=true;setSync('off');$('offBanner').style.display='block';refreshAll()}
 """
     hero = hero_html("blue", "秋招岗位 · 其他企业", "互联网 / 科技 / 制造业，按城市·职业·批次快速筛选", "autumn")
     return _wrap_page("秋招岗位", body, nav, page_js, urls, active="autumn", hero=hero)
@@ -920,17 +997,17 @@ function buildJobCard(j){
   var dEl=card.querySelector('[data-field="截止日期"]');
   var dd=dOnly(j['截止日期']);
   if(dd){var n=diffDays(today(),dd);dEl.textContent=(n<0?'已截止(' + dd + ')':(n===0?'今天截止':n+'天后截止(' + dd + ')'));if(n<0)dEl.style.color='var(--red)';else if(n<=3)dEl.style.color='var(--orange)';}else{dEl.textContent='截止时间待定';}
-  card.querySelector('[data-field="投递链接"]').addEventListener('click',function(e){e.preventDefault();var l=jobLink(j);if(l){openLink(l)}else{showIntel(fieldText(j,'公司'))}});
-  card.querySelector('.jsearch').addEventListener('click',function(){showIntel(fieldText(j,'公司'))});
+  card.querySelector('[data-field="投递链接"]').addEventListener('click',function(e){e.preventDefault();var l=jobLink(j);if(l){openLink(l)}else{showIntel(fieldText(j,'公司'),nkId(j))}});
+  card.querySelector('.jsearch').addEventListener('click',function(){showIntel(fieldText(j,'公司'),nkId(j))});
   card.querySelector('.jmark').addEventListener('click',function(){markApplied(j);});
   var jst=card.querySelector('.jstatus');jst.innerHTML='';
   (OPTS['投递状态']||[]).forEach(function(o){var op=document.createElement('option');op.value=o.text;op.textContent=o.text;jst.appendChild(op)});jst.value=st;
-  jst.addEventListener('change',function(){if(!jst.value||jst.value===st){jst.value=st;return}jst.disabled=true;db.updateRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(j),properties:{'投递状态':{select:jst.value}}}).then(function(){return jst.value==='已投递'?syncTracking(j):null}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:',e);jst.disabled=false})});
-  card.querySelector('.jdel').addEventListener('click',function(){if(!confirm('确定删除「'+plain(j['公司'])+'」这条岗位吗？'))return;db.deleteRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(j)}).then(reloadAll).catch(function(e){console.error('[database] 删除失败:',e)})});
+  jst.addEventListener('change',function(){if(!jst.value||jst.value===st){jst.value=st;return}jst.disabled=true;db.updateRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(j),properties:{'投递状态':{select:jst.value}}}).then(function(){return jst.value==='已投递'?syncTracking(j):null}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:'+((e&&e.message)||String(e)));jst.disabled=false})});
+  card.querySelector('.jdel').addEventListener('click',function(){if(!confirm('确定删除「'+plain(j['公司'])+'」这条岗位吗？'))return;db.deleteRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(j)}).then(reloadAll).catch(function(e){console.error('[database] 删除失败:'+((e&&e.message)||String(e)))})});
   return card;
 }
-function syncTracking(rec){var company=fieldText(rec,'公司');if(!company)return Promise.resolve();var exists=state.apps.some(function(a){return fieldText(a,'公司')===company});if(exists)return Promise.resolve();var p={'公司':{text:company},'岗位':{text:fieldText(rec,'岗位方向')||'校招岗位'},'当前阶段':{select:'已投递'},'投递日期':{date:today()},'节点说明':{text:'由岗位看板一键标记自动生成'}};var u=urlVal(rec['投递链接']);if(u.link)p['相关链接']={url:{text:'网申入口',link:u.link}};return db.addRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',properties:p}).catch(function(e){console.error(e)});}
-function markApplied(rec){db.updateRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(rec),properties:{'投递状态':{select:'已投递'}}}).then(function(){return syncTracking(rec)}).then(reloadAll).catch(function(e){console.error('[database] 标已投失败:',e);alert('更新失败，请刷新页面重试');});}
+function syncTracking(rec){var company=fieldText(rec,'公司');if(!company)return Promise.resolve();var exists=state.apps.some(function(a){return fieldText(a,'公司')===company});if(exists)return Promise.resolve();var p={'公司':{text:company},'岗位':{text:fieldText(rec,'岗位方向')||'校招岗位'},'当前阶段':{select:'已投递'},'投递日期':{date:today()},'节点说明':{text:'由岗位看板一键标记自动生成'}};var u=urlVal(rec['投递链接']);if(u.link)p['相关链接']={url:{text:'网申入口',link:u.link}};return db.addRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',properties:p}).catch(function(e){console.error('[database] 操作失败:'+((e&&e.message)||String(e)))});}
+function markApplied(rec){db.updateRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',recordId:recId(rec),properties:{'投递状态':{select:'已投递'}}}).then(function(){return syncTracking(rec)}).then(reloadAll).catch(function(e){console.error('[database] 标已投失败:'+((e&&e.message)||String(e)));alert('更新失败，请刷新页面重试');});}
 function renderJobs(){
   var box=$('jobCards'),rows=filteredSOE();
   setText('jobCnt',rows.length+' 家');
@@ -954,7 +1031,7 @@ function bindSubmitJob(){
     var dl=form.querySelector('[name="deadline"]').value;if(dl)p['截止日期']={date:dl};
     var jl=form.querySelector('[name="jlink"]').value.trim();if(jl)p['投递链接']={url:{text:jl,link:jl}};
     var jn=form.querySelector('[name="jnote"]').value.trim();if(jn)p['备注']={text:jn};
-    db.addRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',properties:p}).then(function(){form.reset();return reloadAll()}).catch(function(err){console.error(err);alert('提交失败')}).finally(function(){if(btn){btn.disabled=false;btn.textContent='保存岗位'}});
+    db.addRecord({databaseId:'GgZ71tywhs4HEZytFSqXTP',properties:p}).then(function(){form.reset();return reloadAll()}).catch(function(err){console.error('[database] 操作失败:'+((err&&err.message)||String(err)));alert('提交失败')}).finally(function(){if(btn){btn.disabled=false;btn.textContent='保存岗位'}});
   });
 }
 function fillSelect(selId,field,withAll){var sel=$(selId);if(!sel)return;sel.innerHTML='';if(withAll){var o0=document.createElement('option');o0.value='';o0.textContent=field==='投递状态'?'全部状态':'全部批次';sel.appendChild(o0)}(OPTS[field]||[]).forEach(function(o){var oo=document.createElement('option');oo.value=withAll?o.text:o.id;oo.textContent=o.text;sel.appendChild(oo)});}
@@ -964,7 +1041,7 @@ function init(){
   bindIntelClose();
   bindExpress();
   if(!db){goOffline();return}
-  setText('syncTxt','已同步');bindSubmitJob();
+  setSync('ok');bindSubmitJob();
   bindFormCache('jobForm');
   $('lnkClose').addEventListener('click',function(){$('lnkModal').style.display='none'});
   $('lnkModal').addEventListener('click',function(e){if(e.target===$('lnkModal'))$('lnkModal').style.display='none'});
@@ -972,13 +1049,10 @@ function init(){
   $('fSt').addEventListener('change',function(){state.fSt=$('fSt').value;renderJobs()});
   $('fCity').addEventListener('change',function(){state.fCity=$('fCity').value;renderJobs()});
   $('fCareer').addEventListener('change',function(){state.fCareer=$('fCareer').value;renderJobs()});
-  Promise.all([db.getSchema({databaseId:'GgZ71tywhs4HEZytFSqXTP'}),db.getSchema({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S'}),db.getSchema({databaseId:'tgH8096uENTaIj8RSY9qm5'})]).then(function(ss){
-    ss.forEach(function(schema){(schema.properties||[]).forEach(function(f){if((f.type==='select'||f.type==='multi_select')&&f.config&&f.config.options){OPTS[f.name]=f.config.options}})});
-    renderSelectOptions();
-    return reloadAll();
-  }).catch(function(e){console.error('[database] 初始化失败:',e);goOffline()});
+  DB_READY=function(){return initSchema(function(){renderSelectOptions()})};
+  DB_READY().catch(function(e){console.error('[database] 初始化失败:'+((e&&e.message)||String(e)));goOffline()});
 }
-function goOffline(){offline=true;$('syncBox').className='sync off';setText('syncTxt','离线模式');$('offBanner').style.display='block';refreshAll()}
+function goOffline(){offline=true;setSync('off');$('offBanner').style.display='block';refreshAll()}
 """
     hero = hero_html("red", "央国企专栏", "央企 · 银行 · 运营商 · 电网 · 烟草，稳定选择单独看", "soe")
     return _wrap_page("央国企", body, nav, page_js, urls, active="soe", hero=hero)
@@ -1031,7 +1105,9 @@ def page_intern(urls):
         <div><label class="fl">薪资</label><input name="salary" placeholder="如：200元/天"></div>
         <div><label class="fl">工作地点</label><input name="location" value="成都"></div>
       </div>
-      <label class="fl">投递链接（BOSS 岗位页链接）</label><input name="ilnk" type="url" placeholder="https://">
+      <label class="fl">投递链接（官方投递页链接）</label><input name="ilnk" type="url" placeholder="https://">
+      <label class="fl">网申开始 / 截止日期（可留空）</label>
+      <div style="display:flex;gap:8px"><input name="open" type="date" style="flex:1"><input name="deadline" type="date" style="flex:1"></div>
       <label class="fl">岗位要求</label><textarea name="req" placeholder="方向 / 要求 / 到岗时间"></textarea>
       <label class="fl">备注</label><textarea name="inote" placeholder="HR、内推人等"></textarea>
       <div style="margin-top:10px"><button type="submit" class="btn btn-pri" style="width:100%">保存实习岗位</button></div>
@@ -1051,6 +1127,7 @@ def page_intern(urls):
   <div class="jcard" id="tplJob" style="border-left:3px solid var(--orange)">
     <div class="jrow"><b data-field="公司"></b><span style="color:var(--sub);font-size:13px" data-field="岗位名称"></span><span class="tag" data-field="投递状态" style="margin-left:auto"></span></div>
     <div class="jmeta">薪资：<span data-field="薪资"></span> ｜ 地点：<span data-field="工作地点"></span> ｜ <span data-field="岗位要求"></span></div>
+    <div class="jmeta dline">网申：<span data-field="网申开始"></span> ~ <span data-field="截止日期"></span></div>
     <div class="jnote" data-field="备注"></div>
     <div class="jmeta">来源：<span data-field="来源"></span></div>
     <div class="jacts"><a class="btn btn-ghost btn-sm" data-field="投递链接" target="_blank" rel="noopener">投递</a><button class="btn btn-search btn-sm jsearch">公司情报</button><select class="jstatus"></select><button class="btn btn-gray btn-sm jdel">删除</button></div>
@@ -1077,13 +1154,17 @@ function buildInternCard(i){
   var card=$('tplJob').cloneNode(true);card.removeAttribute('id');
   var st=jobStatus(i);
   setFieldText(card,'公司',i['公司'],INTERN_ID);setFieldText(card,'岗位名称',i['岗位名称'],INTERN_ID);setFieldText(card,'薪资',i['薪资'],INTERN_ID);setFieldText(card,'工作地点',i['工作地点'],INTERN_ID);setFieldText(card,'岗位要求',i['岗位要求'],INTERN_ID);setFieldText(card,'备注',i['备注'],INTERN_ID);setFieldText(card,'来源',i['来源'],INTERN_ID);
+  // 网申起止来自牛客同步；两条都为空时整行隐藏，避免出现「网申： ~ 」这种空壳
+  var dl=plain(i['截止日期'])||plain(i['网申开始']);
+  setFieldText(card,'网申开始',plain(i['网申开始'])||'—',INTERN_ID);setFieldText(card,'截止日期',plain(i['截止日期'])||'—',INTERN_ID);
+  var dlRow=card.querySelector('.dline');if(dlRow&&!dl)dlRow.style.display='none';
   var stEl=card.querySelector('[data-field="投递状态"]');if(st==='已投递')stEl.className='tag ok';else if(st==='不投了')stEl.className='tag gray';
-  card.querySelector('[data-field="投递链接"]').addEventListener('click',function(e){e.preventDefault();var l=urlVal(i['投递链接']).link;if(l){openLink(l)}else{showIntel(fieldText(i,'公司'))}});
-  card.querySelector('.jsearch').addEventListener('click',function(){showIntel(fieldText(i,'公司'))});
+  card.querySelector('[data-field="投递链接"]').addEventListener('click',function(e){e.preventDefault();var l=urlVal(i['投递链接']).link;if(l){openLink(l)}else{showIntel(fieldText(i,'公司'),nkId(i))}});
+  card.querySelector('.jsearch').addEventListener('click',function(){showIntel(fieldText(i,'公司'),nkId(i))});
   var jst=card.querySelector('.jstatus');jst.innerHTML='';
   (OPTS['投递状态']||[]).forEach(function(o){var op=document.createElement('option');op.value=o.text;op.textContent=o.text;jst.appendChild(op)});jst.value=st;
-  jst.addEventListener('change',function(){if(!jst.value||jst.value===st){jst.value=st;return}jst.disabled=true;db.updateRecord({databaseId:'tgH8096uENTaIj8RSY9qm5',recordId:recId(i),properties:{'投递状态':{select:jst.value}}}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:',e);jst.disabled=false})});
-  card.querySelector('.jdel').addEventListener('click',function(){if(!confirm('确定删除「'+plain(i['公司'])+'」这条实习岗位吗？'))return;db.deleteRecord({databaseId:'tgH8096uENTaIj8RSY9qm5',recordId:recId(i)}).then(reloadAll).catch(function(e){console.error('[database] 删除失败:',e)})});
+  jst.addEventListener('change',function(){if(!jst.value||jst.value===st){jst.value=st;return}jst.disabled=true;db.updateRecord({databaseId:'tgH8096uENTaIj8RSY9qm5',recordId:recId(i),properties:{'投递状态':{select:jst.value}}}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:'+((e&&e.message)||String(e)));jst.disabled=false})});
+  card.querySelector('.jdel').addEventListener('click',function(){if(!confirm('确定删除「'+plain(i['公司'])+'」这条实习岗位吗？'))return;db.deleteRecord({databaseId:'tgH8096uENTaIj8RSY9qm5',recordId:recId(i)}).then(reloadAll).catch(function(e){console.error('[database] 删除失败:'+((e&&e.message)||String(e)))})});
   return card;
 }
 function refreshAll(){renderInterns();}
@@ -1097,8 +1178,10 @@ function bindSubmitIntern(){
     var l=form.querySelector('[name="location"]').value.trim();if(l)p['工作地点']={text:l};
     var r=form.querySelector('[name="req"]').value.trim();if(r)p['岗位要求']={text:r};
     var il=form.querySelector('[name="ilnk"]').value.trim();if(il)p['投递链接']={url:{text:'岗位链接',link:il}};
+    var od=form.querySelector('[name="open"]').value;if(od)p['网申开始']={date:od};
+    var dd=form.querySelector('[name="deadline"]').value;if(dd)p['截止日期']={date:dd};
     var n=form.querySelector('[name="inote"]').value.trim();if(n)p['备注']={text:n};
-    db.addRecord({databaseId:'tgH8096uENTaIj8RSY9qm5',properties:p}).then(function(){form.reset();return reloadAll()}).catch(function(err){console.error(err);alert('提交失败')}).finally(function(){if(btn){btn.disabled=false;btn.textContent='保存实习岗位'}});
+    db.addRecord({databaseId:'tgH8096uENTaIj8RSY9qm5',properties:p}).then(function(){form.reset();return reloadAll()}).catch(function(err){console.error('[database] 操作失败:'+((err&&err.message)||String(err)));alert('提交失败')}).finally(function(){if(btn){btn.disabled=false;btn.textContent='保存实习岗位'}});
   });
 }
 function fillSelect(selId,field,withAll){var sel=$(selId);if(!sel)return;sel.innerHTML='';if(withAll){var o0=document.createElement('option');o0.value='';o0.textContent='全部状态';sel.appendChild(o0)}(OPTS[field]||[]).forEach(function(o){var oo=document.createElement('option');oo.value=withAll?o.text:o.id;oo.textContent=o.text;sel.appendChild(oo)});}
@@ -1108,29 +1191,37 @@ function init(){
   bindIntelClose();
   bindExpress();
   if(!db){goOffline();return}
-  setText('syncTxt','已同步');bindSubmitIntern();
+  setSync('ok');bindSubmitIntern();
   bindFormCache('internForm');
   $('lnkClose').addEventListener('click',function(){$('lnkModal').style.display='none'});
   $('lnkModal').addEventListener('click',function(e){if(e.target===$('lnkModal'))$('lnkModal').style.display='none'});
   $('q').addEventListener('input',function(){state.q=$('q').value.trim();renderInterns()});
   $('fSt').addEventListener('change',function(){state.fSt=$('fSt').value;renderInterns()});
-  Promise.all([db.getSchema({databaseId:'GgZ71tywhs4HEZytFSqXTP'}),db.getSchema({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S'}),db.getSchema({databaseId:'tgH8096uENTaIj8RSY9qm5'})]).then(function(ss){
-    ss.forEach(function(schema){(schema.properties||[]).forEach(function(f){if((f.type==='select'||f.type==='multi_select')&&f.config&&f.config.options){OPTS[f.name]=f.config.options}})});
-    renderSelectOptions();
-    return reloadAll();
-  }).catch(function(e){console.error('[database] 初始化失败:',e);goOffline()});
+  DB_READY=function(){return initSchema(function(){renderSelectOptions()})};
+  DB_READY().catch(function(e){console.error('[database] 初始化失败:'+((e&&e.message)||String(e)));goOffline()});
 }
-function goOffline(){offline=true;$('syncBox').className='sync off';setText('syncTxt','离线模式');$('offBanner').style.display='block';refreshAll()}
+function goOffline(){offline=true;setSync('off');$('offBanner').style.display='block';refreshAll()}
 """
     hero = hero_html("amber", "日常实习直通车", "15 家官方实习通道一键直达，牛客实习批次每日自动同步，秋招批次绝不混入", "intern")
     return _wrap_page("成都实习", body, nav, page_js, urls, active="intern", hero=hero)
 
 def _wrap_page(title, body, nav, page_js, urls, active, hero=''):
     # JS fetches all 3 tables + reloadAll is shared
-    fetch_jobs = "function fetchJobs(){var out=[],cur=null;function once(){return db.query({databaseId:'GgZ71tywhs4HEZytFSqXTP',pageSize:100,startCursor:cur||undefined}).then(function(res){out=out.concat(res.results||[]);cur=res.nextCursor;return res.hasMore&&out.length<3000?once():out})}return once()}\n"
-    fetch_apps = "function fetchApps(){var out=[],cur=null;function once(){return db.query({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',pageSize:100,startCursor:cur||undefined}).then(function(res){out=out.concat(res.results||[]);cur=res.nextCursor;return res.hasMore&&out.length<2000?once():out})}return once()}\n"
-    fetch_ints = "function fetchInterns(){var out=[],cur=null;function once(){return db.query({databaseId:'tgH8096uENTaIj8RSY9qm5',pageSize:100,startCursor:cur||undefined}).then(function(res){out=out.concat(res.results||[]);cur=res.nextCursor;return res.hasMore&&out.length<1000?once():out})}return once()}\n"
-    load = "function loadData(){if(offline)return Promise.resolve();return Promise.all([fetchJobs(),fetchApps(),fetchInterns()]).then(function(r){state.jobs=r[0];state.apps=r[1];state.interns=r[2]}).catch(function(e){console.error('[database] 数据加载失败:',e)});}\nfunction reloadAll(){return loadData().then(function(){refreshAll()});}\n"
+    # pageSize 取 SDK 上限 200（默认 50），600+ 条的岗位表从 7 次请求降到 4 次；
+    # 每轮都校验 hasMore/nextCursor/空页/游标不前进，任一异常立即停，避免死循环。
+    fetch_jobs = "function fetchJobs(){var out=[],cur=null;function once(){return db.query({databaseId:'GgZ71tywhs4HEZytFSqXTP',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=5000)return out;cur=nx;return once()})}return once()}\n"
+    fetch_apps = "function fetchApps(){var out=[],cur=null;function once(){return db.query({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=3000)return out;cur=nx;return once()})}return once()}\n"
+    fetch_ints = "function fetchInterns(){var out=[],cur=null;function once(){return db.query({databaseId:'tgH8096uENTaIj8RSY9qm5',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=3000)return out;cur=nx;return once()})}return once()}\n"
+    load = ("var _loadP=null,_loadRetry=0,_lastLoadAt=0,_syncFailed=false;\n"
+            "function loadOnce(){return Promise.all([fetchJobs(),fetchApps(),fetchInterns()]).then(function(r){"
+            "state.jobs=r[0];state.apps=r[1];state.interns=r[2];_clsCache={};_lastLoadAt=Date.now();setSync('ok')})}\n"
+            "/* 并发去重：连点/多模块同时刷新只发一轮请求；失败自动重试 1 次（间隔 1.5s）。 */\n"
+            "function loadData(){if(offline)return Promise.resolve();if(_loadP)return _loadP;"
+            "_loadP=loadOnce().then(function(r){_loadP=null;_loadRetry=0;_syncFailed=false;return r},function(e){"
+            "_loadP=null;console.error('[database] 数据加载失败:'+((e&&e.message)||String(e)));"
+            "if(_loadRetry<1){_loadRetry++;return new Promise(function(ok){setTimeout(ok,1500)}).then(loadData)}"
+            "_loadRetry=0;_syncFailed=true;setSync('warn');return Promise.reject(e)});return _loadP}\n"
+            "function reloadAll(){return loadData().then(function(){refreshAll()},function(){refreshAll()});}\n")
     js = "(function(){\n'use strict';\n" + SHARED_JS + "\n" + fetch_jobs + fetch_apps + fetch_ints + load + page_js + "\nif(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init)}else{init()}\n})();"
 
     return f"""<!DOCTYPE html>
@@ -1146,7 +1237,7 @@ def _wrap_page(title, body, nav, page_js, urls, active, hero=''):
 {nav}
 {hero}
 <div class="wrap">
-<div class="banner" id="offBanner">离线模式：未连接到在线数据表，数据读写暂不可用。请通过资料库链接打开本页面。</div>
+<div class="banner" id="offBanner">离线模式：未连接到在线数据表，数据读写暂不可用。请通过资料库链接打开本页面。<button type="button" class="btn btn-sm" id="offRetry" style="margin-left:10px;cursor:pointer">重试连接</button></div>
 {body}
 </div>
 {LNKMODAL_HTML}
@@ -1168,12 +1259,26 @@ URLS_PLACEHOLDER = URLS  # final real URLs now
 
 # Per-page canonical schemas (subset of fields actually rendered)
 SCHEMAS = {
-    "overview": ["公司","批次","岗位方向","工作地点","优先级","投递状态","网申开始","截止日期","投递链接","来源","备注",
+    "overview": ["公司","批次","岗位方向","工作地点","优先级","投递状态","网申开始","截止日期","投递链接","来源","备注","牛客ID",
                  "岗位","当前阶段","投递日期","下次节点","节点说明","复盘笔记","相关链接"],
-    "autumn":   ["公司","批次","岗位方向","工作地点","优先级","投递状态","网申开始","截止日期","投递链接","来源","备注"],
-    "soe":      ["公司","批次","岗位方向","工作地点","优先级","投递状态","网申开始","截止日期","投递链接","来源","备注"],
-    "intern":   ["公司","岗位名称","薪资","工作地点","岗位要求","投递状态","投递链接","来源","备注"],
+    "autumn":   ["公司","批次","岗位方向","工作地点","优先级","投递状态","网申开始","截止日期","投递链接","来源","备注","牛客ID"],
+    "soe":      ["公司","批次","岗位方向","工作地点","优先级","投递状态","网申开始","截止日期","投递链接","来源","备注","牛客ID"],
+    "intern":   ["公司","岗位名称","薪资","工作地点","岗位要求","投递状态","网申开始","截止日期","投递链接","来源","备注","牛客ID"],
 }
+
+# 每页与 canonical 不同的真实选择器：canonical_schema.json 是以合并版单文件为准写的，
+# 独立页的表单名/展示位跟它并不一致（例如实习表单用 ilnk/inote、央国企卡片用 .jstatus 而不是
+# data-field="投递状态"）。这里按页覆盖，保证 lint_schema 的 R10「选择器必须真实存在」成立。
+FIELD_MAPPING_OVERRIDE = {
+    "intern": {
+        "投递链接": {"form_input": '[name="ilnk"]'},
+        "备注": {"form_input": '[name="inote"]'},
+    },
+    "soe": {
+        "投递状态": {"display_selector": ".jstatus"},
+    },
+}
+
 
 def main():
     here = Path(__file__).parent
@@ -1200,9 +1305,17 @@ def main():
     (workspace/p_int['filename']).write_text(p_int['content'], encoding='utf-8')
     # write per-page schema files
     for name, fields in SCHEMAS.items():
-        sub = {"properties": {k: v for k, v in full["properties"].items() if k in fields},
-               "field_mapping": {k: v for k, v in full.get("field_mapping", {}).items() if k in fields},
-               "options_map": full.get("options_map", {})}
+        # options_map / field_mapping 同步收窄到该页实际用到的字段，否则 lint R7
+        # 会报「options_map 中存在但 properties 不存在」
+        fm = {k: dict(v) for k, v in full.get("field_mapping", {}).items() if k in fields}
+        for fk, patch in FIELD_MAPPING_OVERRIDE.get(name, {}).items():
+            if fk in fm:
+                fm[fk].update(patch)
+        sub = {"title": full.get("title"), "page_type": full.get("page_type"),
+               "properties": {k: v for k, v in full["properties"].items() if k in fields},
+               "field_mapping": fm,
+               "options_map": {k: v for k, v in full.get("options_map", {}).items()
+                               if k in fields and k in full["properties"]}}
         (here/f"canonical_{name}.json").write_text(json.dumps(sub, ensure_ascii=False), encoding='utf-8')
     for f in [p_over, p_aut, p_soe, p_int]:
         print(f"wrote {f['filename']}, {len(f['content'])} bytes")
