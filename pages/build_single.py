@@ -21,7 +21,7 @@ MODULES = ["overview", "autumn", "soe", "intern"]
 # ---- per-module ID lists (from body templates) + prefix ----
 IDS = {
     "overview": ["todayCnt","todayMine","todayList","stWait","stDone","stDdl","stLive",
-                 "ovToday","ovMe","tdW7","tdNode","tdIb","tdTotal",
+                 "tdW7","tdNode","tdIb","tdTotal",
                  "cntAutumn","cntSOE","cntIntern","appCnt","appForm","fStage","funnelSvg",
                  "appCards","tplBox","tplApp"],
     "autumn":   ["jobCnt","jobForm","fBatch","fPrio","batchChips","q","fCity","fCareer",

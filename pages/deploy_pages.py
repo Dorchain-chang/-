@@ -20,7 +20,7 @@ PAGES = [
     ("JgXPaIiaDMGt2xH3vBftAo", SINGLE),
 ]
 
-MSG = "总览拆分：今日提醒（含近况总览）与个人中心分离；导航可切换左侧竖排/顶部横排（记忆偏好）；主题色自定义"
+MSG = "总览页移除顶部「求职总览台」大横幅，今日提醒/个人中心直接顶格呈现，页面更紧凑"
 
 
 def run_page_script(name, args, token):

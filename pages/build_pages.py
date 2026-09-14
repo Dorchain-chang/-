@@ -505,8 +505,7 @@ NAV_HTML = """
 <nav class="tabbar">
   <div class="inner">
     <a class="logo" target="_top" href="{OVERVIEW_URL}"><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>秋招求职台</a>
-    <a class="tab" target="_top" href="{OVERVIEW_URL}#today" data-sub="today">今日提醒</a>
-    <a class="tab" target="_top" href="{OVERVIEW_URL}" data-sub="me" {OVERVIEW_ACTIVE}>个人中心</a>
+    <a class="tab" target="_top" href="{OVERVIEW_URL}" {OVERVIEW_ACTIVE}>总览</a>
     <a class="tab" target="_top" href="{AUTUMN_URL}" {AUTUMN_ACTIVE}>秋招岗位</a>
     <a class="tab" target="_top" href="{SOE_URL}" {SOE_ACTIVE}>央国企</a>
     <a class="tab" target="_top" href="{INTERN_URL}" {INTERN_ACTIVE}>成都实习</a>
@@ -906,6 +905,18 @@ function ovSub(sub){
   });
 }
 window.ovSub=ovSub;
+function ovSub(sub){
+  var td=$('ovToday'),me=$('ovMe');if(!td||!me)return;
+  td.style.display=sub==='today'?'':'none';
+  me.style.display=sub==='me'?'':'none';
+  var hm=$('hmSec');if(hm)hm.style.display=sub==='me'?'':'none';
+  try{history.replaceState(null,'',sub==='today'?'#today':'#me')}catch(err){}
+  Array.prototype.forEach.call(document.querySelectorAll('nav.tabbar .tab'),function(t){
+    var s=t.getAttribute('data-sub');if(!s)return;
+    if(s===sub)t.setAttribute('aria-current','page');else t.removeAttribute('aria-current');
+  });
+}
+window.ovSub=ovSub;
 function refreshAll(){renderToday();renderTdStats();renderStats();renderModuleCounts();renderFunnel();renderInbox();renderApps();}
 
 function bindSubmitApp(){
@@ -951,7 +962,7 @@ function init(){
 }
 function goOffline(){offline=true;setSync('off');$('offBanner').style.display='block';refreshAll()}
 """
-    hero = hero_html("", "求职总览台", "今天的投递节奏、逾期提醒和全局统计都在这里", "overview")
+    hero = ''
     return _wrap_page("总览", body, nav, page_js, urls, active="overview", hero=hero)
 
 def page_autumn(urls):

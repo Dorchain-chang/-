@@ -285,8 +285,8 @@ nav.tabbar .tab{cursor:pointer;font-family:inherit}
 <div class="wrap">
 <div class="banner" id="offBanner">离线模式：未连接到在线数据表，数据读写暂不可用。请通过资料库链接打开本页面。<button type="button" class="btn btn-sm" id="offRetry" style="margin-left:10px;cursor:pointer">重试连接</button></div>
 <div class="view" id="view_overview">
-<div class="hero "><div class="hero-in"><div class="hero-txt"><h1>求职总览台</h1><p>今天的投递节奏、逾期提醒和全局统计都在这里</p></div><svg class="hero-ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg></div></div>
-<div id="ov_ovToday">
+
+<div id="ovToday">
 <section>
   <h2><svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>今天要处理<span class="cnt" id="ov_todayCnt"></span></h2>
   <label class="legend"><input type="checkbox" id="ov_todayMine" checked style="min-height:0;margin:0">只看 AI/计算机相关 · 北京/成都/天津（关掉看全部）</label>
@@ -305,7 +305,7 @@ nav.tabbar .tab{cursor:pointer;font-family:inherit}
 </section>
 </div>
 
-<div id="ov_ovMe" style="display:none">
+<div id="ovMe" style="display:none">
 <div class="stats">
   <div class="stat" style="border-color:#f3c1c1"><b id="ov_stWait" data-sp-bindable="database" data-sp-database-id="GgZ71tywhs4HEZytFSqXTP">0</b><span>待投递岗位</span></div>
   <div class="stat"><b id="ov_stDone" data-sp-bindable="database" data-sp-database-id="GgZ71tywhs4HEZytFSqXTP">0</b><span>已投递</span></div>
@@ -1065,7 +1065,19 @@ function renderTdStats(){
   setText('ov_tdW7',w7);setText('ov_tdNode',nodes);setText('ov_tdIb',ib);setText('ov_tdTotal',state.apps.length);
 }
 function ovSub(sub){
-  var td=$('ov_ovToday'),me=$('ov_ovMe');if(!td||!me)return;
+  var td=$('ovToday'),me=$('ovMe');if(!td||!me)return;
+  td.style.display=sub==='today'?'':'none';
+  me.style.display=sub==='me'?'':'none';
+  var hm=$('hmSec');if(hm)hm.style.display=sub==='me'?'':'none';
+  try{history.replaceState(null,'',sub==='today'?'#today':'#me')}catch(err){}
+  Array.prototype.forEach.call(document.querySelectorAll('nav.tabbar .tab'),function(t){
+    var s=t.getAttribute('data-sub');if(!s)return;
+    if(s===sub)t.setAttribute('aria-current','page');else t.removeAttribute('aria-current');
+  });
+}
+window.ovSub=ovSub;
+function ovSub(sub){
+  var td=$('ovToday'),me=$('ovMe');if(!td||!me)return;
   td.style.display=sub==='today'?'':'none';
   me.style.display=sub==='me'?'':'none';
   var hm=$('hmSec');if(hm)hm.style.display=sub==='me'?'':'none';
