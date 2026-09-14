@@ -35,7 +35,7 @@ PREFIX = {"overview": "ov", "autumn": "at", "soe": "so", "intern": "ir"}
 STATE_FIELDS = ["fBatchF", "fSt", "fCity", "fCareer", "q"]
 
 REFRESH_LINE = {
-    "overview": "function refreshAll(){renderToday();renderStats();renderModuleCounts();renderFunnel();renderApps();}",
+    "overview": "function refreshAll(){renderToday();renderStats();renderModuleCounts();renderFunnel();renderInbox();renderApps();}",
     "autumn":   "function refreshAll(){renderFilterFacets();renderJobs();}",
     "soe":      "function refreshAll(){renderFilterFacets();renderJobs();}",
     "intern":   "function refreshAll(){renderInterns();}",
@@ -44,7 +44,7 @@ REFRESH_LINE = {
 # hand-written per-module registration (bind/setup) replacing the old init()
 TAIL = {
 "overview": """
-MODS.push({refresh:function(){renderToday();renderStats();renderModuleCounts();renderFunnel();renderApps();renderHeatmap();},setup:function(){fillStageOv();},bind:function(){
+MODS.push({refresh:function(){renderToday();renderStats();renderModuleCounts();renderFunnel();renderInbox();renderApps();renderHeatmap();},setup:function(){fillStageOv();},bind:function(){
   bindSubmitApp();
   bindFormCache('ov_appForm');
   bindQuickIntel();

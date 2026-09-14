@@ -79,7 +79,22 @@
    "url": ""
   },
   "来源": {
-   "text": ""
+   "select": {
+    "options": [
+     {
+      "text": "邮件",
+      "id": "sY0oIvlkO1Ps"
+     },
+     {
+      "text": "短信",
+      "id": "lqGLhqo3kR41"
+     },
+     {
+      "text": "浏览器扩展",
+      "id": "OMvzjqa2OUiI"
+     }
+    ]
+   }
   },
   "备注": {
    "text": ""
@@ -150,6 +165,83 @@
    "text": ""
   },
   "牛客ID": {
+   "text": ""
+  },
+  "类型": {
+   "select": {
+    "options": [
+     {
+      "text": "笔试",
+      "id": "1d5D1v9TfdVr"
+     },
+     {
+      "text": "面试",
+      "id": "4Eh00Pg57PP0"
+     },
+     {
+      "text": "Offer",
+      "id": "guLOXuAm2cwr"
+     },
+     {
+      "text": "感谢信",
+      "id": "kdIvWzHwWmrb"
+     },
+     {
+      "text": "其他",
+      "id": "3rJmTFn8Q9pN"
+     }
+    ]
+   }
+  },
+  "状态": {
+   "select": {
+    "options": [
+     {
+      "text": "待确认",
+      "id": "hiye07dnxSkK"
+     },
+     {
+      "text": "已确认",
+      "id": "7WhsNTqF8pOB"
+     },
+     {
+      "text": "已忽略",
+      "id": "wXcxwZU5ugXJ"
+     }
+    ]
+   }
+  },
+  "置信度": {
+   "select": {
+    "options": [
+     {
+      "text": "高",
+      "id": "Mjmow8L38LiY"
+     },
+     {
+      "text": "中",
+      "id": "HX0bwY6BU9Nh"
+     },
+     {
+      "text": "低",
+      "id": "EPLc3kmjKXnx"
+     }
+    ]
+   }
+  },
+  "事项时间": {
+   "date": "1970-01-01T00:00:00Z"
+  },
+  "收件时间": {
+   "date": "1970-01-01T00:00:00Z"
+  },
+  "原文摘要": {
+   "text": ""
+  },
+  "发件人": {
+   "text": ""
+  },
+  "消息ID": {
    "text": ""
   }
  },
@@ -289,6 +381,38 @@
    "form_input": null,
    "display_selector": null,
    "render_signal": "公司情报面板深链（牛客企业主页/面经/真题/薪资/讨论）"
+  },
+  "类型": {
+   "value_type": "select",
+   "form_input": null,
+   "display_selector": "[data-field=\"类型\"]",
+   "render_signal": "收件箱:类型",
+   "options_value_key": "text"
+  },
+  "事项时间": {
+   "value_type": "date",
+   "form_input": null,
+   "display_selector": "[data-field=\"事项时间\"]",
+   "render_signal": "收件箱:事项时间"
+  },
+  "原文摘要": {
+   "value_type": "text",
+   "form_input": null,
+   "display_selector": "[data-field=\"原文摘要\"]",
+   "render_signal": "收件箱:原文摘要"
+  },
+  "发件人": {
+   "value_type": "text",
+   "form_input": null,
+   "display_selector": "[data-field=\"发件人\"]",
+   "render_signal": "收件箱:发件人"
+  },
+  "置信度": {
+   "value_type": "select",
+   "form_input": null,
+   "display_selector": "[data-field=\"置信度\"]",
+   "render_signal": "收件箱:置信度",
+   "options_value_key": "text"
   }
  },
  "options_map": {
@@ -370,6 +494,70 @@
    "SEijMhyZQyf8": {
     "text": "已终止",
     "id": "SEijMhyZQyf8"
+   }
+  },
+  "类型": {
+   "1d5D1v9TfdVr": {
+    "text": "笔试",
+    "id": "1d5D1v9TfdVr"
+   },
+   "4Eh00Pg57PP0": {
+    "text": "面试",
+    "id": "4Eh00Pg57PP0"
+   },
+   "guLOXuAm2cwr": {
+    "text": "Offer",
+    "id": "guLOXuAm2cwr"
+   },
+   "kdIvWzHwWmrb": {
+    "text": "感谢信",
+    "id": "kdIvWzHwWmrb"
+   },
+   "3rJmTFn8Q9pN": {
+    "text": "其他",
+    "id": "3rJmTFn8Q9pN"
+   }
+  },
+  "来源": {
+   "sY0oIvlkO1Ps": {
+    "text": "邮件",
+    "id": "sY0oIvlkO1Ps"
+   },
+   "lqGLhqo3kR41": {
+    "text": "短信",
+    "id": "lqGLhqo3kR41"
+   },
+   "OMvzjqa2OUiI": {
+    "text": "浏览器扩展",
+    "id": "OMvzjqa2OUiI"
+   }
+  },
+  "状态": {
+   "hiye07dnxSkK": {
+    "text": "待确认",
+    "id": "hiye07dnxSkK"
+   },
+   "7WhsNTqF8pOB": {
+    "text": "已确认",
+    "id": "7WhsNTqF8pOB"
+   },
+   "wXcxwZU5ugXJ": {
+    "text": "已忽略",
+    "id": "wXcxwZU5ugXJ"
+   }
+  },
+  "置信度": {
+   "Mjmow8L38LiY": {
+    "text": "高",
+    "id": "Mjmow8L38LiY"
+   },
+   "HX0bwY6BU9Nh": {
+    "text": "中",
+    "id": "HX0bwY6BU9Nh"
+   },
+   "EPLc3kmjKXnx": {
+    "text": "低",
+    "id": "EPLc3kmjKXnx"
    }
   }
  },

@@ -65,7 +65,12 @@ function buildMock() {
       牛客ID: String(900 + i),
     });
   }
-  return { jobs, apps, interns };
+  const inbox = [
+    { record_id: 'ibx0', 公司: '字节跳动', 类型: '笔试', 事项时间: new Date(2026, 8, 20).toISOString(), 原文摘要: '笔试邀请：9月20日 14:00 在线测评', 发件人: 'noreply@bytedance.com', 来源: '邮件', 状态: '待确认', 置信度: '高' },
+    { record_id: 'ibx1', 公司: '美团', 类型: '面试', 事项时间: new Date(2026, 8, 22).toISOString(), 原文摘要: '面试邀请：9月22日 10:00 视频面试', 发件人: 'careers@meituan.com', 来源: '邮件', 状态: '待确认', 置信度: '高' },
+    { record_id: 'ibx2', 公司: '百度', 类型: 'Offer', 事项时间: new Date(2026, 8, 10).toISOString(), 原文摘要: '录用意向通知', 发件人: 'offer@baidu.com', 来源: '邮件', 状态: '已确认', 置信度: '高' },
+  ];
+  return { jobs, apps, interns, inbox };
 }
 
 const DATA = buildMock();
@@ -89,8 +94,15 @@ SCHEMA.oBGkMFTv9Xv4Xn5gFOK18S.properties.forEach((p) => {
 SCHEMA.tgH8096uENTaIj8RSY9qm5.properties.forEach((p) => {
   if (p.name === '投递状态') { p.type = 'select'; p.config = { options: [{ id: 's1', text: '待投递' }, { id: 's2', text: '已投递' }, { id: 's3', text: '不投了' }] }; }
 });
+SCHEMA.EdCHnKtjZIXEw37tUmvhqL = { properties: ['公司', '类型', '事项时间', '原文摘要', '发件人', '来源', '状态', '置信度', '消息ID', '收件时间'].map((n) => ({ name: n, type: 'text' })) };
+SCHEMA.EdCHnKtjZIXEw37tUmvhqL.properties.forEach((p) => {
+  if (p.name === '类型') { p.type = 'select'; p.config = { options: [{ id: 't1', text: '笔试' }, { id: 't2', text: '面试' }, { id: 't3', text: 'Offer' }, { id: 't4', text: '感谢信' }, { id: 't5', text: '其他' }] }; }
+  if (p.name === '来源') { p.type = 'select'; p.config = { options: [{ id: 'm1', text: '邮件' }, { id: 'm2', text: '短信' }, { id: 'm3', text: '浏览器扩展' }] }; }
+  if (p.name === '状态') { p.type = 'select'; p.config = { options: [{ id: 'w1', text: '待确认' }, { id: 'w2', text: '已确认' }, { id: 'w3', text: '已忽略' }] }; }
+  if (p.name === '置信度') { p.type = 'select'; p.config = { options: [{ id: 'c1', text: '高' }, { id: 'c2', text: '中' }, { id: 'c3', text: '低' }] }; }
+});
 
-const TABLE = { GgZ71tywhs4HEZytFSqXTP: DATA.jobs, oBGkMFTv9Xv4Xn5gFOK18S: DATA.apps, tgH8096uENTaIj8RSY9qm5: DATA.interns };
+const TABLE = { GgZ71tywhs4HEZytFSqXTP: DATA.jobs, oBGkMFTv9Xv4Xn5gFOK18S: DATA.apps, tgH8096uENTaIj8RSY9qm5: DATA.interns, EdCHnKtjZIXEw37tUmvhqL: DATA.inbox };
 
 const MOCK = `
 (function(){
@@ -197,6 +209,22 @@ const MOCK = `
     const hiddenAfterToggle = box.hidden;
     return { hasQuick: !!qy && !!qn, quickTxt: [qy && qy.textContent, qn && qn.textContent], hiddenBefore, visibleAfter, chips, curMarked, hiddenAfterToggle };
   });
+
+  // 情报收件箱：待确认渲染 / 确认展开写入条 / 默认阶段映射 / 写库
+  const inboxUi = await page.evaluate(() => {
+    const cnt = document.getElementById('ibCnt') || document.getElementById('ov_ibCnt');
+    const box = document.getElementById('ibCards') || document.getElementById('ov_ibCards');
+    const cards = box ? Array.from(box.querySelectorAll('.acard')) : [];
+    return { cnt: cnt ? cnt.textContent : '', n: cards.length, companies: cards.map((c) => { const b = c.querySelector('[data-field="公司"]'); return b ? b.textContent : ''; }) };
+  });
+  await page.click('#ibCards .acard .ibok, #ov_ibCards .acard .ibok');
+  const pickVisible = await page.evaluate(() => { const p = document.querySelector('#ibCards .acard .ibpick, #ov_ibCards .acard .ibpick'); return !!p && p.style.display !== 'none'; });
+  const defStage = await page.evaluate(() => { const p = document.querySelector('#ibCards .acard .ibpick select, #ov_ibCards .acard .ibpick select'); return p ? p.value : ''; });
+  const writesBefore = await page.evaluate(() => window.__MOCK__.writes);
+  await page.click('#ibCards .acard .ibpick button.btn-pri, #ov_ibCards .acard .ibpick button.btn-pri');
+  await page.waitForTimeout(600);
+  const writesAfter = await page.evaluate(() => window.__MOCK__.writes);
+
   await page.click('nav.tabbar .tab[data-view="autumn"]');
 
   // 外部数据变更订阅：模拟他人在表格改数据 → 页面应自动重拉
@@ -234,6 +262,9 @@ const MOCK = `
     console.log('  阶段选项:', stageUi.chips.join(' · '));
     if (!stageUi.hasQuick || !stageUi.visibleAfter || !stageUi.curMarked || !stageUi.hiddenAfterToggle) errors.push('stage UI broken');
   }
+  console.log('情报收件箱: 待确认', inboxUi ? inboxUi.n : '无', '条 计数', inboxUi && inboxUi.cnt, '| 公司:', inboxUi ? inboxUi.companies.join('/') : '-');
+  console.log('  确认→展开写入条:', pickVisible, '| 默认阶段:', defStage, '| 写库次数', writesBefore, '→', writesAfter);
+  if (!inboxUi || inboxUi.n !== 2 || !pickVisible || defStage !== '笔试' || writesAfter - writesBefore < 2) errors.push('inbox UI broken');
   console.log('--- 实时订阅 ---');
   console.log('外部变更前 query:', beforeQueries, '→ 后:', afterQueries, '| 触发重拉:', afterQueries > beforeQueries, '| handler 实际执行次数:', fired);
   if (mem) console.log('JS 堆: 已用', mem.usedMB, 'MB / 总量', mem.totalMB, 'MB');

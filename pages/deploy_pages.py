@@ -20,7 +20,7 @@ PAGES = [
     ("JgXPaIiaDMGt2xH3vBftAo", SINGLE),
 ]
 
-MSG = "阶段改法简化：投递跟踪卡片去掉 8 项下拉框，改为「已投 / 不投」两个一键快键 + 点击阶段标签展开全部阶段选项（当前阶段高亮）"
+MSG = "新增情报收件箱：邮件/短信解析的笔试·面试·Offer 通知先进收件箱待确认，人工确认后才写入投递跟踪（解析只是建议，不自动改状态）"
 
 
 def run_page_script(name, args, token):

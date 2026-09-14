@@ -28,7 +28,8 @@ MOCK_ADAPTER = r"""
   function loadSchema(){return JSON.parse(localStorage.getItem('qiuzhao_demo_schema')||'null')||{
     'jobs':{name:'jobs',dbid:'JOBS_ID_FAKE',options:{},order:0},
     'apps':{name:'apps',dbid:'APPS_ID_FAKE',options:{},order:1},
-    'interns':{name:'interns',dbid:'INTERN_ID_FAKE',options:{},order:2}
+    'interns':{name:'interns',dbid:'INTERN_ID_FAKE',options:{},order:2},
+    'inbox':{name:'inbox',dbid:'INBOX_ID_FAKE',options:{},order:3}
   };}
   // databaseId -> 本地表名 的映射。
   // 旧版是把方法挂在同一个 db 对象上循环覆盖，闭包最终只留住最后一次循环的 name，
@@ -89,9 +90,9 @@ MOCK_ADAPTER = r"""
 
     });
     // Mock SDK: only query that returns localStorage; write operations update localStorage.
-    window.__SMART_PAGE__={database:fakeDb(['jobs','apps','interns'])};
+    window.__SMART_PAGE__={database:fakeDb(['jobs','apps','interns','inbox'])};
     // Pre-fill demo data on first visit
-    if(!localStorage.getItem('qiuzhao_demo_seeded_v2')){
+    if(!localStorage.getItem('qiuzhao_demo_seeded_v3')){
       // 演示数据用「相对今天」的日期生成，保证任何时候打开 demo 都有
       // 逾期（红）/ 临期（橙）/ 正常 三类样本，不会随时间失效
       function d(off){var t=new Date();t.setDate(t.getDate()+off);function p(n){return (n<10?'0':'')+n}return t.getFullYear()+'-'+p(t.getMonth()+1)+'-'+p(t.getDate());}
@@ -105,23 +106,30 @@ MOCK_ADAPTER = r"""
       ];
       var demoApps=[{公司:{text:'字节跳动'},岗位:{text:'大模型算法实习生'},当前阶段:{text:'一面'},投递日期:{date:d(-5)},下次节点:{date:d(2)},节点说明:{text:'技术一面'},复盘笔记:{text:'演示数据'},相关链接:{url:{text:'官网',link:'https://jobs.bytedance.com'}}},{公司:{text:'美团'},岗位:{text:'后端开发工程师'},当前阶段:{text:'已投递'},投递日期:{date:d(-5)},投递日期:{date:d(-5)},复盘笔记:{text:'演示数据'}},{公司:{text:'商汤科技'},岗位:{text:'AGI算法工程师'},当前阶段:{text:'笔试'},投递日期:{date:d(-3)},下次节点:{date:d(1)},节点说明:{text:'在线笔试'},复盘笔记:{text:'演示数据'}},{公司:{text:'腾讯'},岗位:{text:'机器学习工程师'},当前阶段:{text:'已投递'},投递日期:{date:d(-3)},复盘笔记:{text:'演示数据'}},{公司:{text:'百度'},岗位:{text:'大模型算法工程师'},当前阶段:{text:'已投递'},投递日期:{date:d(-1)},复盘笔记:{text:'演示数据'}},{公司:{text:'网易'},岗位:{text:'数据开发工程师'},当前阶段:{text:'已投递'},投递日期:{date:d(-1)},复盘笔记:{text:'演示数据'}},{公司:{text:'华为'},岗位:{text:'AI工程师'},当前阶段:{text:'已投递'},投递日期:{date:d(0)},复盘笔记:{text:'演示数据'}},{公司:{text:'小米'},岗位:{text:'软件工程师'},当前阶段:{text:'已投递'},投递日期:{date:d(0)},复盘笔记:{text:'演示数据'}},{公司:{text:'OPPO'},岗位:{text:'算法实习生'},当前阶段:{text:'已投递'},投递日期:{date:d(0)},复盘笔记:{text:'演示数据'}},{公司:{text:'科大讯飞'},岗位:{text:'NLP工程师'},当前阶段:{text:'已投递'},投递日期:{date:d(-8)},复盘笔记:{text:'演示数据'}}];
       var demoInterns=[{公司:{text:'腾讯成都'},岗位名称:{text:'技术类实习'},薪资:{text:'200-300元/天'},工作地点:{text:'成都'},岗位要求:{text:'实习'},投递状态:{text:'待投递'},投递链接:{url:{text:'投递',link:'https://careers.tencent.com'}},来源:{text:'演示数据'},备注:{text:'演示'}}];
+      var demoInbox=[
+        {公司:{text:'字节跳动'},类型:{text:'笔试'},事项时间:{date:d(2)},原文摘要:{text:'【示例】你已成功报名字节跳动 2027 校招笔试，请于本周六 14:00-16:00 完成在线测评'},发件人:{text:'noreply@bytedance.com'},来源:{text:'邮件'},状态:{text:'待确认'},置信度:{text:'高'}},
+        {公司:{text:'腾讯'},类型:{text:'面试'},事项时间:{date:d(4)},原文摘要:{text:'【示例】恭喜您通过简历筛选，邀请参加机器学习工程师岗位面试，时间为 10:00（腾讯会议）'},发件人:{text:'careers@tencent.com'},来源:{text:'邮件'},状态:{text:'待确认'},置信度:{text:'高'}},
+        {公司:{text:'美团'},类型:{text:'Offer'},事项时间:{date:d(-1)},原文摘要:{text:'【示例】我们很高兴地通知您，您已通过全部面试环节，录用意向书已发送至您的邮箱'},发件人:{text:'offer@meituan.com'},来源:{text:'邮件'},状态:{text:'待确认'},置信度:{text:'中'}}
+      ];
       saveLS('jobs',demoJobs.map(function(r){var id='seed_'+Math.random().toString(36).slice(2,10);r._id=id;r.record_id=id;r.id=id;return r;}));
       saveLS('apps',demoApps.map(function(r){var id='seed_'+Math.random().toString(36).slice(2,10);r._id=id;r.record_id=id;r.id=id;return r;}));
       saveLS('interns',demoInterns.map(function(r){var id='seed_'+Math.random().toString(36).slice(2,10);r._id=id;r.record_id=id;r.id=id;return r;}));
+      saveLS('inbox',demoInbox.map(function(r){var id='seed_'+Math.random().toString(36).slice(2,10);r._id=id;r.record_id=id;r.id=id;return r;}));
       // Pre-fill schema options for selects to work
       var schema={
         jobs:{name:'jobs',dbid:'JOBS_ID_FAKE',options:{'批次':[{text:'27秋招',id:'b_qz'},{text:'27暑期实习',id:'b_sq'},{text:'27日常实习',id:'b_rc'}],'优先级':[{text:'P0',id:'p0'},{text:'P1',id:'p1'},{text:'P2',id:'p2'}],'投递状态':[{text:'待投递',id:'s_w'},{text:'已投递',id:'s_d'},{text:'不投了',id:'s_n'}]}},
         apps:{name:'apps',dbid:'APPS_ID_FAKE',options:{'当前阶段':[{text:'已投递',id:'ph_yd'},{text:'笔试',id:'ph_bs'},{text:'一面',id:'ph_ym'},{text:'二面',id:'ph_em'},{text:'HR面',id:'ph_hr'},{text:'Offer',id:'ph_of'},{text:'感谢信',id:'ph_th'}]}},
-        interns:{name:'interns',dbid:'INTERN_ID_FAKE',options:{'投递状态':[{text:'待投递',id:'i_w'},{text:'已投递',id:'i_d'},{text:'不投了',id:'i_n'}]}}
+        interns:{name:'interns',dbid:'INTERN_ID_FAKE',options:{'投递状态':[{text:'待投递',id:'i_w'},{text:'已投递',id:'i_d'},{text:'不投了',id:'i_n'}]}},
+        inbox:{name:'inbox',dbid:'INBOX_ID_FAKE',options:{'类型':[{text:'笔试',id:'t_bs'},{text:'面试',id:'t_ms'},{text:'Offer',id:'t_of'},{text:'感谢信',id:'t_gx'},{text:'其他',id:'t_qt'}],'来源':[{text:'邮件',id:'src_m'},{text:'短信',id:'src_d'},{text:'浏览器扩展',id:'src_e'}],'状态':[{text:'待确认',id:'st_0'},{text:'已确认',id:'st_1'},{text:'已忽略',id:'st_2'}],'置信度':[{text:'高',id:'cf_h'},{text:'中',id:'cf_m'},{text:'低',id:'cf_l'}]}}
       };
       localStorage.setItem('qiuzhao_demo_schema',JSON.stringify(schema));
-      localStorage.setItem('qiuzhao_demo_seeded_v2','1');
+      localStorage.setItem('qiuzhao_demo_seeded_v3','1');
     }
     // Load schema options into local OPTS for demo mode
     var sch=loadSchema();
     window.__DEMO_OPTS__={};
     // Load existing options
-    ['jobs','apps','interns'].forEach(function(n){
+    ['jobs','apps','interns','inbox'].forEach(function(n){
       var s=localStorage.getItem('qiuzhao_demo_schema');
       var opts=s?JSON.parse(s)[n].options:{};
       window.__DEMO_OPTS__[n]=opts;
@@ -143,6 +151,8 @@ def patch(src):
     s = s.replace("'GgZ71tywhs4HEZytFSqXTP'", "'JOBS_ID_FAKE'")
     s = s.replace("'oBGkMFTv9Xv4Xn5gFOK18S'", "'APPS_ID_FAKE'")
     s = s.replace("'tgH8096uENTaIj8RSY9qm5'", "'INTERN_ID_FAKE'")
+    s = s.replace("var INBOX_ID='EdCHnKtjZIXEw37tUmvhqL'", "var INBOX_ID='INBOX_ID_FAKE'")
+    s = s.replace("'EdCHnKtjZIXEw37tUmvhqL'", "'INBOX_ID_FAKE'")
     # Remove requirePresence checks for __SMART_PAGE__ so demo adapter works
     # Inject adapter at the very start of inline script
     script_re = re.compile(r'<script>(.*?)</script>', re.S)

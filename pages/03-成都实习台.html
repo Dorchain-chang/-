@@ -306,9 +306,9 @@ label.fl{display:block;margin:6px 0 0}
 <script>(function(){
 'use strict';
 
-var JOBS_ID='GgZ71tywhs4HEZytFSqXTP', APPS_ID='oBGkMFTv9Xv4Xn5gFOK18S', INTERN_ID='tgH8096uENTaIj8RSY9qm5';
+var JOBS_ID='GgZ71tywhs4HEZytFSqXTP', APPS_ID='oBGkMFTv9Xv4Xn5gFOK18S', INTERN_ID='tgH8096uENTaIj8RSY9qm5', INBOX_ID='EdCHnKtjZIXEw37tUmvhqL';
 var OPTS={};
-var state={jobs:[],apps:[],interns:[],todayMine:true,batchMode:''};
+var state={jobs:[],apps:[],interns:[],inbox:[],todayMine:true,batchMode:''};
 var STAGES=['已投递','笔试','一面','二面','HR面','Offer','感谢信'];
 var DROP_STAGE='已终止';
 var db=null,offline=false;
@@ -474,9 +474,9 @@ function subscribeUpdates(){
     });
   }catch(e){_updBound=false}
 }
-/* 取三表 schema → 合并 select 选项 → 触发各模块 setup → 拉全量数据 */
+/* 取四表 schema → 合并 select 选项 → 触发各模块 setup → 拉全量数据 */
 function initSchema(after){
-  return Promise.all([db.getSchema({databaseId:'GgZ71tywhs4HEZytFSqXTP'}),db.getSchema({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S'}),db.getSchema({databaseId:'tgH8096uENTaIj8RSY9qm5'})]).then(function(ss){
+  return Promise.all([db.getSchema({databaseId:'GgZ71tywhs4HEZytFSqXTP'}),db.getSchema({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S'}),db.getSchema({databaseId:'tgH8096uENTaIj8RSY9qm5'}),db.getSchema({databaseId:'EdCHnKtjZIXEw37tUmvhqL'})]).then(function(ss){
     ss.forEach(function(schema){(schema.properties||[]).forEach(function(f){if((f.type==='select'||f.type==='multi_select')&&f.config&&f.config.options){OPTS[f.name]=f.config.options}})});
     subscribeUpdates();
     if(after)after();
@@ -499,8 +499,9 @@ document.addEventListener('click',function(e){var t=e.target;if(t&&t.id==='offRe
 function fetchJobs(){var out=[],cur=null;function once(){return db.query({databaseId:'GgZ71tywhs4HEZytFSqXTP',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=5000)return out;cur=nx;return once()})}return once()}
 function fetchApps(){var out=[],cur=null;function once(){return db.query({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=3000)return out;cur=nx;return once()})}return once()}
 function fetchInterns(){var out=[],cur=null;function once(){return db.query({databaseId:'tgH8096uENTaIj8RSY9qm5',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=3000)return out;cur=nx;return once()})}return once()}
+function fetchInbox(){var out=[],cur=null;function once(){return db.query({databaseId:'EdCHnKtjZIXEw37tUmvhqL',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=1000)return out;cur=nx;return once()})}return once()}
 var _loadP=null,_loadRetry=0,_lastLoadAt=0,_syncFailed=false;
-function loadOnce(){return Promise.all([fetchJobs(),fetchApps(),fetchInterns()]).then(function(r){state.jobs=r[0];state.apps=r[1];state.interns=r[2];_clsCache={};_lastLoadAt=Date.now();setSync('ok')})}
+function loadOnce(){return Promise.all([fetchJobs(),fetchApps(),fetchInterns(),fetchInbox()]).then(function(r){state.jobs=r[0];state.apps=r[1];state.interns=r[2];state.inbox=r[3];_clsCache={};_lastLoadAt=Date.now();setSync('ok')})}
 /* 并发去重：连点/多模块同时刷新只发一轮请求；失败自动重试 1 次（间隔 1.5s）。 */
 function loadData(){if(offline)return Promise.resolve();if(_loadP)return _loadP;_loadP=loadOnce().then(function(r){_loadP=null;_loadRetry=0;_syncFailed=false;return r},function(e){_loadP=null;console.error('[database] 数据加载失败:'+((e&&e.message)||String(e)));if(_loadRetry<1){_loadRetry++;return new Promise(function(ok){setTimeout(ok,1500)}).then(loadData)}_loadRetry=0;_syncFailed=true;setSync('warn');return Promise.reject(e)});return _loadP}
 function reloadAll(){return loadData().then(function(){refreshAll()},function(){refreshAll()});}

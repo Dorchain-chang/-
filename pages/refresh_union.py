@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""刷新 schema_union.json：把三张表的实时 schema 拼成一份并集快照（构建/交接用的契约文件）。
+"""刷新 schema_union.json：把四张表的实时 schema 拼成一份并集快照（构建/交接用的契约文件）。
 
 用法: printf '%s\\n' '<token>' | python pages/refresh_union.py
 """
@@ -14,6 +14,7 @@ TABLES = [
     ("GgZ71tywhs4HEZytFSqXTP", "秋招岗位清单"),
     ("oBGkMFTv9Xv4Xn5gFOK18S", "投递跟踪"),
     ("tgH8096uENTaIj8RSY9qm5", "成都实习岗位"),
+    ("EdCHnKtjZIXEw37tUmvhqL", "求职情报收件箱"),
 ]
 
 

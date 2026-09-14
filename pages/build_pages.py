@@ -9,6 +9,7 @@ OUT = Path(__file__).parent
 JOBS_ID = "GgZ71tywhs4HEZytFSqXTP"
 APPS_ID = "oBGkMFTv9Xv4Xn5gFOK18S"
 INTERN_ID = "tgH8096uENTaIj8RSY9qm5"
+INBOX_ID = "EdCHnKtjZIXEw37tUmvhqL"
 
 CAREER_KW = "['算法','人工智能','AI','大模型','机器学习','深度学习','数据','软件','开发','计算机','信息技术','网络安全','信息安全','测试','前端','后端','运维','嵌入式']"
 MY_CITY_KW = "['北京','成都','天津']"
@@ -226,9 +227,9 @@ label.fl{display:block;margin:6px 0 0}
 
 # shared utility JS that every page needs
 SHARED_JS = """
-var JOBS_ID='{JOBS_ID}', APPS_ID='{APPS_ID}', INTERN_ID='{INTERN_ID}';
+var JOBS_ID='{JOBS_ID}', APPS_ID='{APPS_ID}', INTERN_ID='{INTERN_ID}', INBOX_ID='{INBOX_ID}';
 var OPTS={{}};
-var state={{jobs:[],apps:[],interns:[],todayMine:true,batchMode:''}};
+var state={{jobs:[],apps:[],interns:[],inbox:[],todayMine:true,batchMode:''}};
 var STAGES=['已投递','笔试','一面','二面','HR面','Offer','感谢信'];
 var DROP_STAGE='已终止';
 var db=null,offline=false;
@@ -394,9 +395,9 @@ function subscribeUpdates(){{
     }});
   }}catch(e){{_updBound=false}}
 }}
-/* 取三表 schema → 合并 select 选项 → 触发各模块 setup → 拉全量数据 */
+/* 取四表 schema → 合并 select 选项 → 触发各模块 setup → 拉全量数据 */
 function initSchema(after){{
-  return Promise.all([db.getSchema({{databaseId:'GgZ71tywhs4HEZytFSqXTP'}}),db.getSchema({{databaseId:'oBGkMFTv9Xv4Xn5gFOK18S'}}),db.getSchema({{databaseId:'tgH8096uENTaIj8RSY9qm5'}})]).then(function(ss){{
+  return Promise.all([db.getSchema({{databaseId:'GgZ71tywhs4HEZytFSqXTP'}}),db.getSchema({{databaseId:'oBGkMFTv9Xv4Xn5gFOK18S'}}),db.getSchema({{databaseId:'tgH8096uENTaIj8RSY9qm5'}}),db.getSchema({{databaseId:'EdCHnKtjZIXEw37tUmvhqL'}})]).then(function(ss){{
     ss.forEach(function(schema){{(schema.properties||[]).forEach(function(f){{if((f.type==='select'||f.type==='multi_select')&&f.config&&f.config.options){{OPTS[f.name]=f.config.options}}}})}});
     subscribeUpdates();
     if(after)after();
@@ -415,7 +416,7 @@ function retryConnect(){{
   Promise.resolve(DB_READY()).then(function(){{var ok=!_syncFailed;setSync(ok?'ok':'warn');done(ok)}},function(){{setSync('warn');done(false)}});
 }}
 document.addEventListener('click',function(e){{var t=e.target;if(t&&t.id==='offRetry')retryConnect()}});
-""".format(JOBS_ID=JOBS_ID, APPS_ID=APPS_ID, INTERN_ID=INTERN_ID, CAREER_KW=CAREER_KW, MY_CITY_KW=MY_CITY_KW, SOE_KW=SOE_KW)
+""".format(JOBS_ID=JOBS_ID, APPS_ID=APPS_ID, INTERN_ID=INTERN_ID, INBOX_ID=INBOX_ID, CAREER_KW=CAREER_KW, MY_CITY_KW=MY_CITY_KW, SOE_KW=SOE_KW)
 
 
 NAV_HTML = """
@@ -512,6 +513,12 @@ def page_overview(urls):
 </section>
 
 <section>
+  <h2><svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>情报收件箱<span class="cnt" id="ibCnt"></span></h2>
+  <p style="margin:0 0 10px;font-size:12px;color:var(--sub)">邮件/短信里的笔试·面试·Offer 通知由自动化解析到这里。解析只是建议，<b>确认后才会写入投递跟踪</b>，不会自动改状态。</p>
+  <div class="cards" id="ibCards"><div class="empty">加载中…</div></div>
+</section>
+
+<section>
   <h2><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>投递跟踪<span class="cnt" id="appCnt"></span></h2>
   <div class="qintel">
     <input id="qiInput" placeholder="表里没有的企业？输入任意公司名，直接查面经/薪资/官网">
@@ -553,6 +560,18 @@ def page_overview(urls):
 </div>
 """
     body += tpl_app
+    tpl_inbox = """
+<div hidden id="tplBox2">
+  <div class="acard" id="tplInbox">
+    <div class="jrow"><b data-field="公司"></b><span style="color:var(--sub);font-size:13px" data-field="发件人"></span><span class="tag" data-field="类型" style="margin-left:auto"></span></div>
+    <div class="jmeta">事项：<span data-field="事项时间"></span> ｜ 置信度：<span data-field="置信度"></span></div>
+    <div class="jnote" data-field="原文摘要"></div>
+    <div class="jacts"><button type="button" class="btn btn-pri btn-sm ibok">确认</button><button type="button" class="btn btn-gray btn-sm ibno">忽略</button></div>
+    <div class="ibpick" style="display:none;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px"></div>
+  </div>
+</div>
+"""
+    body += tpl_inbox
     page_js = r"""
 function todayItems(){
   var t=today(),items=[];
@@ -712,7 +731,64 @@ function renderApps(){
     box.appendChild(card);
   });
 }
-function refreshAll(){renderToday();renderStats();renderModuleCounts();renderFunnel();renderApps();}
+/* ---------- 情报收件箱：解析结果只是建议，确认后才写入投递跟踪 ---------- */
+function selText(v,field){return v?optText(field,typeof v==='object'?(v.text||''):String(v)):''}
+function ibType(r){return selText(r['类型'],'类型')||'其他'}
+function ibStatus(r){return selText(r['状态'],'状态')||'待确认'}
+function ibConf(r){return selText(r['置信度'],'置信度')||'—'}
+var TYPE_STAGE={'笔试':'笔试','面试':'一面','Offer':'Offer','感谢信':'感谢信'};
+function renderInbox(){
+  var box=$('ibCards');if(!box)return;
+  var rows=state.inbox.filter(function(r){return ibStatus(r)==='待确认'}).sort(function(a,b){var x=dOnly(a['收件时间'])||'9999',y=dOnly(b['收件时间'])||'9999';return x<y?-1:1});
+  setText('ibCnt',rows.length+' 条待确认');
+  if(!rows.length){box.innerHTML='<div class="empty">收件箱没有待确认的通知。邮件/短信里的笔试·面试·Offer 解析结果会出现在这里</div>';return}
+  box.innerHTML='';
+  rows.forEach(function(r){
+    var card=$('tplInbox').cloneNode(true);card.removeAttribute('id');
+    setFieldText(card,'公司',r['公司'],INBOX_ID);setFieldText(card,'发件人',fieldText(r,'发件人')||'邮件通知',INBOX_ID);setFieldText(card,'类型',ibType(r),INBOX_ID);
+    setFieldText(card,'事项时间',dOnly(r['事项时间'])||'未识别',INBOX_ID);setFieldText(card,'置信度',ibConf(r),INBOX_ID);setFieldText(card,'原文摘要',plain(r['原文摘要']),INBOX_ID);
+    var pick=card.querySelector('.ibpick');
+    card.querySelector('.ibok').addEventListener('click',function(){
+      if(pick.style.display!=='none'){pick.style.display='none';return}
+      pick.innerHTML='';
+      var def=TYPE_STAGE[ibType(r)]||'';
+      var lbl=document.createElement('span');lbl.style.cssText='font-size:12px;color:var(--sub)';lbl.textContent=plain(r['公司'])+' · 写入阶段';
+      var sel=document.createElement('select');
+      ['已投递','笔试','一面','二面','HR面','Offer','感谢信'].forEach(function(s){var o=document.createElement('option');o.value=s;o.textContent=s;if(s===def)o.selected=true;sel.appendChild(o)});
+      var d=document.createElement('input');d.type='date';var tv=dOnly(r['事项时间']);if(tv)d.value=tv;
+      var ok=document.createElement('button');ok.type='button';ok.className='btn btn-pri btn-sm';ok.textContent='写入投递跟踪';
+      ok.addEventListener('click',function(){
+        ok.disabled=true;ok.textContent='写入中…';
+        confirmInbox(r,sel.value,d.value).then(function(){ok.disabled=false;ok.textContent='写入投递跟踪'},function(){ok.disabled=false;ok.textContent='写入投递跟踪'});
+      });
+      pick.appendChild(lbl);pick.appendChild(sel);pick.appendChild(d);pick.appendChild(ok);
+      pick.style.display='flex';
+    });
+    card.querySelector('.ibno').addEventListener('click',function(){
+      db.updateRecord({databaseId:'EdCHnKtjZIXEw37tUmvhqL',recordId:recId(r),properties:{'状态':{select:optId('状态','已忽略')}}}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:'+((e&&e.message)||String(e)))});
+    });
+    box.appendChild(card);
+  });
+}
+function confirmInbox(r,stage,dateStr){
+  var company=plain(r['公司'])||fieldText(r,'公司');
+  var mark=function(){return db.updateRecord({databaseId:'EdCHnKtjZIXEw37tUmvhqL',recordId:recId(r),properties:{'状态':{select:optId('状态','已确认')}}})};
+  var exist=null,pos='';
+  state.apps.forEach(function(a){if(fieldText(a,'公司')===company&&!exist)exist=a});
+  state.jobs.forEach(function(j){if(fieldText(j,'公司')===company&&!pos)pos=fieldText(j,'岗位方向')});
+  var q;
+  if(exist){
+    var p={'当前阶段':{select:optId('当前阶段',stage)}};
+    if(dateStr)p['下次节点']={date:dateStr};
+    q=db.updateRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',recordId:recId(exist),properties:p});
+  }else{
+    var np={'公司':{text:company},'岗位':{text:pos||'校招岗位'},'当前阶段':{select:optId('当前阶段',stage)},'投递日期':{date:today()},'节点说明':{text:'由情报收件箱确认写入'}};
+    if(dateStr)np['下次节点']={date:dateStr};
+    q=db.addRecord({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',properties:np});
+  }
+  return q.then(mark).then(reloadAll).catch(function(e){console.error('[database] 确认写入失败:'+((e&&e.message)||String(e)));alert('写入失败，请稍后重试')});
+}
+function refreshAll(){renderToday();renderStats();renderModuleCounts();renderFunnel();renderInbox();renderApps();}
 
 function bindSubmitApp(){
   var form=$('appForm');if(!form)return;
@@ -1240,9 +1316,10 @@ def _wrap_page(title, body, nav, page_js, urls, active, hero=''):
     fetch_jobs = "function fetchJobs(){var out=[],cur=null;function once(){return db.query({databaseId:'GgZ71tywhs4HEZytFSqXTP',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=5000)return out;cur=nx;return once()})}return once()}\n"
     fetch_apps = "function fetchApps(){var out=[],cur=null;function once(){return db.query({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=3000)return out;cur=nx;return once()})}return once()}\n"
     fetch_ints = "function fetchInterns(){var out=[],cur=null;function once(){return db.query({databaseId:'tgH8096uENTaIj8RSY9qm5',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=3000)return out;cur=nx;return once()})}return once()}\n"
+    fetch_inbx = "function fetchInbox(){var out=[],cur=null;function once(){return db.query({databaseId:'EdCHnKtjZIXEw37tUmvhqL',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=1000)return out;cur=nx;return once()})}return once()}\n"
     load = ("var _loadP=null,_loadRetry=0,_lastLoadAt=0,_syncFailed=false;\n"
-            "function loadOnce(){return Promise.all([fetchJobs(),fetchApps(),fetchInterns()]).then(function(r){"
-            "state.jobs=r[0];state.apps=r[1];state.interns=r[2];_clsCache={};_lastLoadAt=Date.now();setSync('ok')})}\n"
+            "function loadOnce(){return Promise.all([fetchJobs(),fetchApps(),fetchInterns(),fetchInbox()]).then(function(r){"
+            "state.jobs=r[0];state.apps=r[1];state.interns=r[2];state.inbox=r[3];_clsCache={};_lastLoadAt=Date.now();setSync('ok')})}\n"
             "/* 并发去重：连点/多模块同时刷新只发一轮请求；失败自动重试 1 次（间隔 1.5s）。 */\n"
             "function loadData(){if(offline)return Promise.resolve();if(_loadP)return _loadP;"
             "_loadP=loadOnce().then(function(r){_loadP=null;_loadRetry=0;_syncFailed=false;return r},function(e){"
@@ -1250,7 +1327,7 @@ def _wrap_page(title, body, nav, page_js, urls, active, hero=''):
             "if(_loadRetry<1){_loadRetry++;return new Promise(function(ok){setTimeout(ok,1500)}).then(loadData)}"
             "_loadRetry=0;_syncFailed=true;setSync('warn');return Promise.reject(e)});return _loadP}\n"
             "function reloadAll(){return loadData().then(function(){refreshAll()},function(){refreshAll()});}\n")
-    js = "(function(){\n'use strict';\n" + SHARED_JS + "\n" + fetch_jobs + fetch_apps + fetch_ints + load + page_js + "\nif(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init)}else{init()}\n})();"
+    js = "(function(){\n'use strict';\n" + SHARED_JS + "\n" + fetch_jobs + fetch_apps + fetch_ints + fetch_inbx + load + page_js + "\nif(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init)}else{init()}\n})();"
 
     return f"""<!DOCTYPE html>
 <!-- 本工作台通过 WorkBuddy 资料库能力（library skill）搭建、存储和部署 -->
@@ -1288,7 +1365,8 @@ URLS_PLACEHOLDER = URLS  # final real URLs now
 # Per-page canonical schemas (subset of fields actually rendered)
 SCHEMAS = {
     "overview": ["公司","批次","岗位方向","工作地点","优先级","投递状态","网申开始","截止日期","投递链接","来源","备注","牛客ID",
-                 "岗位","当前阶段","投递日期","下次节点","节点说明","复盘笔记","相关链接"],
+                 "岗位","当前阶段","投递日期","下次节点","节点说明","复盘笔记","相关链接",
+                 "类型","事项时间","原文摘要","发件人","置信度"],
     "autumn":   ["公司","批次","岗位方向","工作地点","优先级","投递状态","网申开始","截止日期","投递链接","来源","备注","牛客ID"],
     "soe":      ["公司","批次","岗位方向","工作地点","优先级","投递状态","网申开始","截止日期","投递链接","来源","备注","牛客ID"],
     "intern":   ["公司","岗位名称","薪资","工作地点","岗位要求","投递状态","网申开始","截止日期","投递链接","来源","备注","牛客ID"],

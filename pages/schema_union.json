@@ -217,6 +217,113 @@
    "id": "aLQzxyQh",
    "name": "岗位要求",
    "type": "text"
+  },
+  {
+   "id": "lJiNhxmx",
+   "name": "类型",
+   "type": "select",
+   "config": {
+    "options": [
+     {
+      "id": "1d5D1v9TfdVr",
+      "text": "",
+      "style": 7
+     },
+     {
+      "id": "4Eh00Pg57PP0",
+      "text": "",
+      "style": 22
+     },
+     {
+      "id": "guLOXuAm2cwr",
+      "text": "",
+      "style": 19
+     },
+     {
+      "id": "kdIvWzHwWmrb",
+      "text": "",
+      "style": 2
+     },
+     {
+      "id": "3rJmTFn8Q9pN",
+      "text": "",
+      "style": 13
+     }
+    ]
+   }
+  },
+  {
+   "id": "vlZtyeDb",
+   "name": "事项时间",
+   "type": "date"
+  },
+  {
+   "id": "bYl9BKZP",
+   "name": "原文摘要",
+   "type": "text"
+  },
+  {
+   "id": "nMy3iPNF",
+   "name": "发件人",
+   "type": "text"
+  },
+  {
+   "id": "1pFU5mE2",
+   "name": "状态",
+   "type": "select",
+   "config": {
+    "options": [
+     {
+      "id": "hiye07dnxSkK",
+      "text": "",
+      "style": 24
+     },
+     {
+      "id": "7WhsNTqF8pOB",
+      "text": "",
+      "style": 13
+     },
+     {
+      "id": "wXcxwZU5ugXJ",
+      "text": "",
+      "style": 18
+     }
+    ]
+   }
+  },
+  {
+   "id": "6ezQ0ujV",
+   "name": "置信度",
+   "type": "select",
+   "config": {
+    "options": [
+     {
+      "id": "Mjmow8L38LiY",
+      "text": "",
+      "style": 17
+     },
+     {
+      "id": "HX0bwY6BU9Nh",
+      "text": "",
+      "style": 17
+     },
+     {
+      "id": "EPLc3kmjKXnx",
+      "text": "",
+      "style": 2
+     }
+    ]
+   }
+  },
+  {
+   "id": "KtC4yVpF",
+   "name": "消息ID",
+   "type": "text"
+  },
+  {
+   "id": "3ftNAYU6",
+   "name": "收件时间",
+   "type": "date"
   }
  ]
 }

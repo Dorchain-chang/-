@@ -286,6 +286,12 @@ nav.tabbar .tab{cursor:pointer;font-family:inherit}
 </section>
 
 <section>
+  <h2><svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>情报收件箱<span class="cnt" id="ibCnt"></span></h2>
+  <p style="margin:0 0 10px;font-size:12px;color:var(--sub)">邮件/短信里的笔试·面试·Offer 通知由自动化解析到这里。解析只是建议，<b>确认后才会写入投递跟踪</b>，不会自动改状态。</p>
+  <div class="cards" id="ibCards"><div class="empty">加载中…</div></div>
+</section>
+
+<section>
   <h2><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>投递跟踪<span class="cnt" id="ov_appCnt"></span></h2>
   <div class="qintel">
     <input id="qiInput" placeholder="表里没有的企业？输入任意公司名，直接查面经/薪资/官网">
@@ -322,6 +328,16 @@ nav.tabbar .tab{cursor:pointer;font-family:inherit}
     <div class="jnote" data-field="复盘笔记"></div>
     <div class="jacts"><a class="btn btn-ghost btn-sm" data-field="相关链接" target="_blank" rel="noopener">链接</a><button type="button" class="btn btn-gray btn-sm aquick">已投</button><button type="button" class="btn btn-gray btn-sm aquick2">不投</button><button class="btn btn-gray btn-sm anote">记笔记</button><button class="btn btn-gray btn-sm adel">删除</button></div>
     <div class="astagebox" hidden></div>
+  </div>
+</div>
+
+<div hidden id="tplBox2">
+  <div class="acard" id="tplInbox">
+    <div class="jrow"><b data-field="公司"></b><span style="color:var(--sub);font-size:13px" data-field="发件人"></span><span class="tag" data-field="类型" style="margin-left:auto"></span></div>
+    <div class="jmeta">事项：<span data-field="事项时间"></span> ｜ 置信度：<span data-field="置信度"></span></div>
+    <div class="jnote" data-field="原文摘要"></div>
+    <div class="jacts"><button type="button" class="btn btn-pri btn-sm ibok">确认</button><button type="button" class="btn btn-gray btn-sm ibno">忽略</button></div>
+    <div class="ibpick" style="display:none;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px"></div>
   </div>
 </div>
 
@@ -531,7 +547,8 @@ nav.tabbar .tab{cursor:pointer;font-family:inherit}
   function loadSchema(){return JSON.parse(localStorage.getItem('qiuzhao_demo_schema')||'null')||{
     'jobs':{name:'jobs',dbid:'JOBS_ID_FAKE',options:{},order:0},
     'apps':{name:'apps',dbid:'APPS_ID_FAKE',options:{},order:1},
-    'interns':{name:'interns',dbid:'INTERN_ID_FAKE',options:{},order:2}
+    'interns':{name:'interns',dbid:'INTERN_ID_FAKE',options:{},order:2},
+    'inbox':{name:'inbox',dbid:'INBOX_ID_FAKE',options:{},order:3}
   };}
   // databaseId -> 本地表名 的映射。
   // 旧版是把方法挂在同一个 db 对象上循环覆盖，闭包最终只留住最后一次循环的 name，
@@ -592,9 +609,9 @@ nav.tabbar .tab{cursor:pointer;font-family:inherit}
 
     });
     // Mock SDK: only query that returns localStorage; write operations update localStorage.
-    window.__SMART_PAGE__={database:fakeDb(['jobs','apps','interns'])};
+    window.__SMART_PAGE__={database:fakeDb(['jobs','apps','interns','inbox'])};
     // Pre-fill demo data on first visit
-    if(!localStorage.getItem('qiuzhao_demo_seeded_v2')){
+    if(!localStorage.getItem('qiuzhao_demo_seeded_v3')){
       // 演示数据用「相对今天」的日期生成，保证任何时候打开 demo 都有
       // 逾期（红）/ 临期（橙）/ 正常 三类样本，不会随时间失效
       function d(off){var t=new Date();t.setDate(t.getDate()+off);function p(n){return (n<10?'0':'')+n}return t.getFullYear()+'-'+p(t.getMonth()+1)+'-'+p(t.getDate());}
@@ -608,23 +625,30 @@ nav.tabbar .tab{cursor:pointer;font-family:inherit}
       ];
       var demoApps=[{公司:{text:'字节跳动'},岗位:{text:'大模型算法实习生'},当前阶段:{text:'一面'},投递日期:{date:d(-5)},下次节点:{date:d(2)},节点说明:{text:'技术一面'},复盘笔记:{text:'演示数据'},相关链接:{url:{text:'官网',link:'https://jobs.bytedance.com'}}},{公司:{text:'美团'},岗位:{text:'后端开发工程师'},当前阶段:{text:'已投递'},投递日期:{date:d(-5)},投递日期:{date:d(-5)},复盘笔记:{text:'演示数据'}},{公司:{text:'商汤科技'},岗位:{text:'AGI算法工程师'},当前阶段:{text:'笔试'},投递日期:{date:d(-3)},下次节点:{date:d(1)},节点说明:{text:'在线笔试'},复盘笔记:{text:'演示数据'}},{公司:{text:'腾讯'},岗位:{text:'机器学习工程师'},当前阶段:{text:'已投递'},投递日期:{date:d(-3)},复盘笔记:{text:'演示数据'}},{公司:{text:'百度'},岗位:{text:'大模型算法工程师'},当前阶段:{text:'已投递'},投递日期:{date:d(-1)},复盘笔记:{text:'演示数据'}},{公司:{text:'网易'},岗位:{text:'数据开发工程师'},当前阶段:{text:'已投递'},投递日期:{date:d(-1)},复盘笔记:{text:'演示数据'}},{公司:{text:'华为'},岗位:{text:'AI工程师'},当前阶段:{text:'已投递'},投递日期:{date:d(0)},复盘笔记:{text:'演示数据'}},{公司:{text:'小米'},岗位:{text:'软件工程师'},当前阶段:{text:'已投递'},投递日期:{date:d(0)},复盘笔记:{text:'演示数据'}},{公司:{text:'OPPO'},岗位:{text:'算法实习生'},当前阶段:{text:'已投递'},投递日期:{date:d(0)},复盘笔记:{text:'演示数据'}},{公司:{text:'科大讯飞'},岗位:{text:'NLP工程师'},当前阶段:{text:'已投递'},投递日期:{date:d(-8)},复盘笔记:{text:'演示数据'}}];
       var demoInterns=[{公司:{text:'腾讯成都'},岗位名称:{text:'技术类实习'},薪资:{text:'200-300元/天'},工作地点:{text:'成都'},岗位要求:{text:'实习'},投递状态:{text:'待投递'},投递链接:{url:{text:'投递',link:'https://careers.tencent.com'}},来源:{text:'演示数据'},备注:{text:'演示'}}];
+      var demoInbox=[
+        {公司:{text:'字节跳动'},类型:{text:'笔试'},事项时间:{date:d(2)},原文摘要:{text:'【示例】你已成功报名字节跳动 2027 校招笔试，请于本周六 14:00-16:00 完成在线测评'},发件人:{text:'noreply@bytedance.com'},来源:{text:'邮件'},状态:{text:'待确认'},置信度:{text:'高'}},
+        {公司:{text:'腾讯'},类型:{text:'面试'},事项时间:{date:d(4)},原文摘要:{text:'【示例】恭喜您通过简历筛选，邀请参加机器学习工程师岗位面试，时间为 10:00（腾讯会议）'},发件人:{text:'careers@tencent.com'},来源:{text:'邮件'},状态:{text:'待确认'},置信度:{text:'高'}},
+        {公司:{text:'美团'},类型:{text:'Offer'},事项时间:{date:d(-1)},原文摘要:{text:'【示例】我们很高兴地通知您，您已通过全部面试环节，录用意向书已发送至您的邮箱'},发件人:{text:'offer@meituan.com'},来源:{text:'邮件'},状态:{text:'待确认'},置信度:{text:'中'}}
+      ];
       saveLS('jobs',demoJobs.map(function(r){var id='seed_'+Math.random().toString(36).slice(2,10);r._id=id;r.record_id=id;r.id=id;return r;}));
       saveLS('apps',demoApps.map(function(r){var id='seed_'+Math.random().toString(36).slice(2,10);r._id=id;r.record_id=id;r.id=id;return r;}));
       saveLS('interns',demoInterns.map(function(r){var id='seed_'+Math.random().toString(36).slice(2,10);r._id=id;r.record_id=id;r.id=id;return r;}));
+      saveLS('inbox',demoInbox.map(function(r){var id='seed_'+Math.random().toString(36).slice(2,10);r._id=id;r.record_id=id;r.id=id;return r;}));
       // Pre-fill schema options for selects to work
       var schema={
         jobs:{name:'jobs',dbid:'JOBS_ID_FAKE',options:{'批次':[{text:'27秋招',id:'b_qz'},{text:'27暑期实习',id:'b_sq'},{text:'27日常实习',id:'b_rc'}],'优先级':[{text:'P0',id:'p0'},{text:'P1',id:'p1'},{text:'P2',id:'p2'}],'投递状态':[{text:'待投递',id:'s_w'},{text:'已投递',id:'s_d'},{text:'不投了',id:'s_n'}]}},
         apps:{name:'apps',dbid:'APPS_ID_FAKE',options:{'当前阶段':[{text:'已投递',id:'ph_yd'},{text:'笔试',id:'ph_bs'},{text:'一面',id:'ph_ym'},{text:'二面',id:'ph_em'},{text:'HR面',id:'ph_hr'},{text:'Offer',id:'ph_of'},{text:'感谢信',id:'ph_th'}]}},
-        interns:{name:'interns',dbid:'INTERN_ID_FAKE',options:{'投递状态':[{text:'待投递',id:'i_w'},{text:'已投递',id:'i_d'},{text:'不投了',id:'i_n'}]}}
+        interns:{name:'interns',dbid:'INTERN_ID_FAKE',options:{'投递状态':[{text:'待投递',id:'i_w'},{text:'已投递',id:'i_d'},{text:'不投了',id:'i_n'}]}},
+        inbox:{name:'inbox',dbid:'INBOX_ID_FAKE',options:{'类型':[{text:'笔试',id:'t_bs'},{text:'面试',id:'t_ms'},{text:'Offer',id:'t_of'},{text:'感谢信',id:'t_gx'},{text:'其他',id:'t_qt'}],'来源':[{text:'邮件',id:'src_m'},{text:'短信',id:'src_d'},{text:'浏览器扩展',id:'src_e'}],'状态':[{text:'待确认',id:'st_0'},{text:'已确认',id:'st_1'},{text:'已忽略',id:'st_2'}],'置信度':[{text:'高',id:'cf_h'},{text:'中',id:'cf_m'},{text:'低',id:'cf_l'}]}}
       };
       localStorage.setItem('qiuzhao_demo_schema',JSON.stringify(schema));
-      localStorage.setItem('qiuzhao_demo_seeded_v2','1');
+      localStorage.setItem('qiuzhao_demo_seeded_v3','1');
     }
     // Load schema options into local OPTS for demo mode
     var sch=loadSchema();
     window.__DEMO_OPTS__={};
     // Load existing options
-    ['jobs','apps','interns'].forEach(function(n){
+    ['jobs','apps','interns','inbox'].forEach(function(n){
       var s=localStorage.getItem('qiuzhao_demo_schema');
       var opts=s?JSON.parse(s)[n].options:{};
       window.__DEMO_OPTS__[n]=opts;
@@ -636,9 +660,9 @@ nav.tabbar .tab{cursor:pointer;font-family:inherit}
 (function(){
 'use strict';
 
-var JOBS_ID='JOBS_ID_FAKE', APPS_ID='APPS_ID_FAKE', INTERN_ID='INTERN_ID_FAKE';
+var JOBS_ID='JOBS_ID_FAKE', APPS_ID='APPS_ID_FAKE', INTERN_ID='INTERN_ID_FAKE', INBOX_ID='INBOX_ID_FAKE';
 var OPTS={};
-var state={jobs:[],apps:[],interns:[],todayMine:true,batchMode:''};
+var state={jobs:[],apps:[],interns:[],inbox:[],todayMine:true,batchMode:''};
 var STAGES=['已投递','笔试','一面','二面','HR面','Offer','感谢信'];
 var DROP_STAGE='已终止';
 var db=null,offline=false;
@@ -804,9 +828,9 @@ function subscribeUpdates(){
     });
   }catch(e){_updBound=false}
 }
-/* 取三表 schema → 合并 select 选项 → 触发各模块 setup → 拉全量数据 */
+/* 取四表 schema → 合并 select 选项 → 触发各模块 setup → 拉全量数据 */
 function initSchema(after){
-  return Promise.all([db.getSchema({databaseId:'JOBS_ID_FAKE'}),db.getSchema({databaseId:'APPS_ID_FAKE'}),db.getSchema({databaseId:'INTERN_ID_FAKE'})]).then(function(ss){
+  return Promise.all([db.getSchema({databaseId:'JOBS_ID_FAKE'}),db.getSchema({databaseId:'APPS_ID_FAKE'}),db.getSchema({databaseId:'INTERN_ID_FAKE'}),db.getSchema({databaseId:'INBOX_ID_FAKE'})]).then(function(ss){
     if(window.__DEMO_OPTS__){Object.keys(window.__DEMO_OPTS__).forEach(function(n){Object.keys(window.__DEMO_OPTS__[n]).forEach(function(k){OPTS[k]=window.__DEMO_OPTS__[n][k]})})}else{ss.forEach(function(schema){(schema.properties||[]).forEach(function(f){if((f.type==='select'||f.type==='multi_select')&&f.config&&f.config.options){OPTS[f.name]=f.config.options}})})};
     subscribeUpdates();
     if(after)after();
@@ -829,8 +853,9 @@ document.addEventListener('click',function(e){var t=e.target;if(t&&t.id==='offRe
 function fetchJobs(){var out=[],cur=null;function once(){return db.query({databaseId:'JOBS_ID_FAKE',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=5000)return out;cur=nx;return once()})}return once()}
 function fetchApps(){var out=[],cur=null;function once(){return db.query({databaseId:'APPS_ID_FAKE',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=3000)return out;cur=nx;return once()})}return once()}
 function fetchInterns(){var out=[],cur=null;function once(){return db.query({databaseId:'INTERN_ID_FAKE',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=3000)return out;cur=nx;return once()})}return once()}
+function fetchInbox(){var out=[],cur=null;function once(){return db.query({databaseId:'INBOX_ID_FAKE',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=1000)return out;cur=nx;return once()})}return once()}
 var _loadP=null,_loadRetry=0,_lastLoadAt=0,_syncFailed=false;
-function loadOnce(){return Promise.all([fetchJobs(),fetchApps(),fetchInterns()]).then(function(r){state.jobs=r[0];state.apps=r[1];state.interns=r[2];_clsCache={};_lastLoadAt=Date.now();setSync('ok')})}
+function loadOnce(){return Promise.all([fetchJobs(),fetchApps(),fetchInterns(),fetchInbox()]).then(function(r){state.jobs=r[0];state.apps=r[1];state.interns=r[2];state.inbox=r[3];_clsCache={};_lastLoadAt=Date.now();setSync('ok')})}
 /* 并发去重：连点/多模块同时刷新只发一轮请求；失败自动重试 1 次（间隔 1.5s）。 */
 function loadData(){if(offline)return Promise.resolve();if(_loadP)return _loadP;_loadP=loadOnce().then(function(r){_loadP=null;_loadRetry=0;_syncFailed=false;return r},function(e){_loadP=null;console.error('[database] 数据加载失败:'+((e&&e.message)||String(e)));if(_loadRetry<1){_loadRetry++;return new Promise(function(ok){setTimeout(ok,1500)}).then(loadData)}_loadRetry=0;_syncFailed=true;setSync('warn');return Promise.reject(e)});return _loadP}
 function reloadAll(){return loadData().then(function(){refreshAll()},function(){refreshAll()});}
@@ -1001,6 +1026,63 @@ function renderApps(){
     box.appendChild(card);
   });
 }
+/* ---------- 情报收件箱：解析结果只是建议，确认后才写入投递跟踪 ---------- */
+function selText(v,field){return v?optText(field,typeof v==='object'?(v.text||''):String(v)):''}
+function ibType(r){return selText(r['类型'],'类型')||'其他'}
+function ibStatus(r){return selText(r['状态'],'状态')||'待确认'}
+function ibConf(r){return selText(r['置信度'],'置信度')||'—'}
+var TYPE_STAGE={'笔试':'笔试','面试':'一面','Offer':'Offer','感谢信':'感谢信'};
+function renderInbox(){
+  var box=$('ibCards');if(!box)return;
+  var rows=state.inbox.filter(function(r){return ibStatus(r)==='待确认'}).sort(function(a,b){var x=dOnly(a['收件时间'])||'9999',y=dOnly(b['收件时间'])||'9999';return x<y?-1:1});
+  setText('ibCnt',rows.length+' 条待确认');
+  if(!rows.length){box.innerHTML='<div class="empty">收件箱没有待确认的通知。邮件/短信里的笔试·面试·Offer 解析结果会出现在这里</div>';return}
+  box.innerHTML='';
+  rows.forEach(function(r){
+    var card=$('tplInbox').cloneNode(true);card.removeAttribute('id');
+    setFieldText(card,'公司',r['公司'],INBOX_ID);setFieldText(card,'发件人',fieldText(r,'发件人')||'邮件通知',INBOX_ID);setFieldText(card,'类型',ibType(r),INBOX_ID);
+    setFieldText(card,'事项时间',dOnly(r['事项时间'])||'未识别',INBOX_ID);setFieldText(card,'置信度',ibConf(r),INBOX_ID);setFieldText(card,'原文摘要',plain(r['原文摘要']),INBOX_ID);
+    var pick=card.querySelector('.ibpick');
+    card.querySelector('.ibok').addEventListener('click',function(){
+      if(pick.style.display!=='none'){pick.style.display='none';return}
+      pick.innerHTML='';
+      var def=TYPE_STAGE[ibType(r)]||'';
+      var lbl=document.createElement('span');lbl.style.cssText='font-size:12px;color:var(--sub)';lbl.textContent=plain(r['公司'])+' · 写入阶段';
+      var sel=document.createElement('select');
+      ['已投递','笔试','一面','二面','HR面','Offer','感谢信'].forEach(function(s){var o=document.createElement('option');o.value=s;o.textContent=s;if(s===def)o.selected=true;sel.appendChild(o)});
+      var d=document.createElement('input');d.type='date';var tv=dOnly(r['事项时间']);if(tv)d.value=tv;
+      var ok=document.createElement('button');ok.type='button';ok.className='btn btn-pri btn-sm';ok.textContent='写入投递跟踪';
+      ok.addEventListener('click',function(){
+        ok.disabled=true;ok.textContent='写入中…';
+        confirmInbox(r,sel.value,d.value).then(function(){ok.disabled=false;ok.textContent='写入投递跟踪'},function(){ok.disabled=false;ok.textContent='写入投递跟踪'});
+      });
+      pick.appendChild(lbl);pick.appendChild(sel);pick.appendChild(d);pick.appendChild(ok);
+      pick.style.display='flex';
+    });
+    card.querySelector('.ibno').addEventListener('click',function(){
+      db.updateRecord({databaseId:'INBOX_ID_FAKE',recordId:recId(r),properties:{'状态':{select:optId('状态','已忽略')}}}).then(reloadAll).catch(function(e){console.error('[database] 更新失败:'+((e&&e.message)||String(e)))});
+    });
+    box.appendChild(card);
+  });
+}
+function confirmInbox(r,stage,dateStr){
+  var company=plain(r['公司'])||fieldText(r,'公司');
+  var mark=function(){return db.updateRecord({databaseId:'INBOX_ID_FAKE',recordId:recId(r),properties:{'状态':{select:optId('状态','已确认')}}})};
+  var exist=null,pos='';
+  state.apps.forEach(function(a){if(fieldText(a,'公司')===company&&!exist)exist=a});
+  state.jobs.forEach(function(j){if(fieldText(j,'公司')===company&&!pos)pos=fieldText(j,'岗位方向')});
+  var q;
+  if(exist){
+    var p={'当前阶段':{select:optId('当前阶段',stage)}};
+    if(dateStr)p['下次节点']={date:dateStr};
+    q=db.updateRecord({databaseId:'APPS_ID_FAKE',recordId:recId(exist),properties:p});
+  }else{
+    var np={'公司':{text:company},'岗位':{text:pos||'校招岗位'},'当前阶段':{select:optId('当前阶段',stage)},'投递日期':{date:today()},'节点说明':{text:'由情报收件箱确认写入'}};
+    if(dateStr)np['下次节点']={date:dateStr};
+    q=db.addRecord({databaseId:'APPS_ID_FAKE',properties:np});
+  }
+  return q.then(mark).then(reloadAll).catch(function(e){console.error('[database] 确认写入失败:'+((e&&e.message)||String(e)));alert('写入失败，请稍后重试')});
+}
 
 function bindSubmitApp(){
   var form=$('ov_appForm');if(!form)return;
@@ -1020,7 +1102,7 @@ function bindSubmitApp(){
   });
 }
 
-MODS.push({refresh:function(){renderToday();renderStats();renderModuleCounts();renderFunnel();renderApps();renderHeatmap();},setup:function(){fillStageOv();},bind:function(){
+MODS.push({refresh:function(){renderToday();renderStats();renderModuleCounts();renderFunnel();renderInbox();renderApps();renderHeatmap();},setup:function(){fillStageOv();},bind:function(){
   bindSubmitApp();
   bindFormCache('ov_appForm');
   bindQuickIntel();
