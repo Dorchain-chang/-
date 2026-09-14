@@ -44,15 +44,76 @@ REFRESH_LINE = {
 # hand-written per-module registration (bind/setup) replacing the old init()
 TAIL = {
 "overview": """
-MODS.push({refresh:function(){renderToday();renderStats();renderModuleCounts();renderFunnel();renderApps();},setup:function(){fillStageOv();},bind:function(){
+MODS.push({refresh:function(){renderToday();renderStats();renderModuleCounts();renderFunnel();renderApps();renderHeatmap();},setup:function(){fillStageOv();},bind:function(){
   bindSubmitApp();
   bindFormCache('ov_appForm');
+  bindQuickIntel();
   $('ov_todayMine').addEventListener('change',function(){state.todayMine=$('ov_todayMine').checked;renderToday()});
 }});
 function fillStageOv(){
   var sel=$('ov_fStage');if(!sel)return;sel.innerHTML='';var o0=document.createElement('option');o0.value='';o0.textContent='请选择';sel.appendChild(o0);
   (OPTS['当前阶段']||[]).forEach(function(o){var oo=document.createElement('option');oo.value=o.id;oo.textContent=o.text;sel.appendChild(oo)});
 }
+/* ---- 投递热力图 ---- */
+var HM_EV_STAGES=['笔试','一面','二面','HR面','Offer'];
+function hmData(){
+  var apps={},evs={};
+  state.apps.forEach(function(a){
+    var d=dOnly(a['投递日期']);
+    if(d){(apps[d]=apps[d]||[]).push(a)}
+    var st=appStage(a),nd=dOnly(a['下次节点']);
+    if(nd&&HM_EV_STAGES.indexOf(st)>=0){(evs[nd]=evs[nd]||[]).push({a:a,st:st,desc:plain(a['节点说明'])})}
+  });
+  return {apps:apps,evs:evs};
+}
+function hmLevel(n){return n>=5?4:n>=3?3:n>=2?2:n>=1?1:0}
+function hmFmt(dt){return dt.getFullYear()+'-'+('0'+(dt.getMonth()+1)).slice(-2)+'-'+('0'+dt.getDate()).slice(-2)}
+function renderHeatmap(){
+  var grid=$('hmGrid'),sum=$('hmSum');if(!grid)return;
+  var d=hmData(),t=today();
+  var end=new Date(t+'T00:00:00');
+  var start=new Date(end);start.setDate(start.getDate()-181);
+  start.setDate(start.getDate()-start.getDay());
+  var totalA=0,totalE=0,streak=0,k;
+  for(k in d.apps)totalA+=d.apps[k].length;
+  for(k in d.evs)totalE+=d.evs[k].length;
+  var cur=new Date(end);
+  while(true){var ds=hmFmt(cur);if(d.apps[ds]&&d.apps[ds].length){streak++;cur.setDate(cur.getDate()-1)}else break}
+  grid.innerHTML='';
+  var frag=document.createDocumentFragment();
+  var cur2=new Date(start),endMs=end.getTime();
+  while(cur2.getTime()<=endMs){
+    var ds2=hmFmt(cur2);
+    var n=(d.apps[ds2]||[]).length;
+    var c=document.createElement('div');
+    c.className='hm-cell l'+hmLevel(n)+(d.evs[ds2]?' ev':'');
+    c.setAttribute('data-date',ds2);
+    c.setAttribute('title',ds2+' · 投递 '+n+' 家'+(d.evs[ds2]?' · 节点 '+d.evs[ds2].length+' 项':''));
+    c.addEventListener('click',function(){showHmDetail(this.getAttribute('data-date'))});
+    frag.appendChild(c);
+    cur2.setDate(cur2.getDate()+1);
+  }
+  grid.appendChild(frag);
+  if(sum)sum.textContent='近 26 周：累计投递 '+totalA+' 家 · 推进节点 '+totalE+' 项 · 连续投递 '+streak+' 天';
+}
+function showHmDetail(ds){
+  var d=hmData();
+  var list=d.apps[ds]||[],ev=d.evs[ds]||[];
+  var m=$('hmModal');if(!m)return;
+  setText('hmDate',ds+'（投递 '+list.length+' 家 · 节点 '+ev.length+' 项）');
+  var h='';
+  list.forEach(function(a){h+='<div class="hmrow"><span class="tag ok">投递</span><b>'+esc(plain(a['公司']))+'</b><span class="hm-sub">'+esc(plain(a['岗位'])||'')+' · 当前：'+esc(appStage(a))+'</span></div>'});
+  ev.forEach(function(x){h+='<div class="hmrow"><span class="tag" style="background:#fdf3e3;color:#d97706">'+esc(x.st)+'</span><b>'+esc(plain(x.a['公司']))+'</b><span class="hm-sub">'+esc(x.desc||'参加'+x.st)+'</span></div>'});
+  if(!h)h='<div class="empty">这一天没有记录</div>';
+  $('hmDetail').innerHTML=h;
+  m.style.display='flex';
+}
+(function(){
+  var m=$('hmModal');if(!m)return;
+  $('hmClose').addEventListener('click',function(){m.style.display='none'});
+  m.addEventListener('click',function(e){if(e.target===m)m.style.display='none'});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')m.style.display='none'});
+})();
 """,
 "autumn": """
 MODS.push({refresh:function(){renderFilterFacets();renderJobs();},setup:function(){renderSelectOptions();},bind:function(){
@@ -99,10 +160,49 @@ NAV_SINGLE = """
 </nav>
 """
 
+HEATMAP_HTML = """
+<section>
+  <h2 style="color:var(--green)"><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/></svg>投递热力图 · 每日足迹</h2>
+  <div class="hmSum" id="hmSum"></div>
+  <div class="hmWrap"><div class="hmGrid" id="hmGrid"></div></div>
+  <div class="hmLegend">少
+    <span class="sq" style="background:#ebedf0"></span><span class="sq" style="background:#9be9a8"></span><span class="sq" style="background:#40c463"></span><span class="sq" style="background:#30a14e"></span><span class="sq" style="background:#216e39"></span>多
+    <span style="margin-left:10px;display:inline-flex;align-items:center;gap:5px"><span class="sq" style="background:#fff;box-shadow:inset 0 0 0 2px #fff,0 0 0 2px #d97706"></span>有笔试 / 面试 / Offer 节点</span>
+    <span style="margin-left:10px">点击任意格子查看当天明细</span>
+  </div>
+</section>
+
+<div id="hmModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:99;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:70vh;overflow:auto;padding:18px;box-shadow:0 10px 30px rgba(15,23,42,.2)">
+    <b id="hmDate" style="font-size:15px"></b>
+    <div id="hmDetail" style="margin-top:8px"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn btn-gray btn-sm" id="hmClose">关闭</button></div>
+  </div>
+</div>
+"""
+
 CSS_EXTRA = """
 nav.tabbar .tab{cursor:pointer;font-family:inherit}
 .view{display:none}
 .view.active{display:block}
+/* ---- 投递热力图 ---- */
+.hmSum{font-size:12px;color:var(--sub);margin-bottom:10px}
+.hmWrap{overflow-x:auto;padding-bottom:2px}
+.hmGrid{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,12px);gap:3px;width:max-content}
+.hm-cell{width:12px;height:12px;border-radius:3px;background:#ebedf0;cursor:pointer}
+.hm-cell:hover{outline:1.5px solid var(--pri);outline-offset:0}
+.hm-cell.l1{background:#9be9a8}
+.hm-cell.l2{background:#40c463}
+.hm-cell.l3{background:#30a14e}
+.hm-cell.l4{background:#216e39}
+.hm-cell.ev{box-shadow:inset 0 0 0 2px #fff,0 0 0 2px #d97706}
+.hmLegend{display:flex;align-items:center;gap:5px;margin-top:10px;font-size:11px;color:var(--sub);flex-wrap:wrap}
+.hmLegend .sq{width:11px;height:11px;border-radius:3px;display:inline-block}
+.hmrow{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;flex-wrap:wrap}
+.hmrow:last-child{border-bottom:0}
+.hmrow b{font-size:13px}
+.hmrow .hm-sub{color:var(--sub);font-size:12px}
+@media (max-width:768px){.hm-cell{width:10px;height:10px}.hmGrid{grid-template-rows:repeat(7,10px);gap:2px}}
 """
 
 BOOT_JS = r"""
@@ -209,6 +309,7 @@ def build():
             for key in MODULES:
                 body = re.sub(r'<a class="moduleCard[^"]*" target="_top" href="%s"' % re.escape(bp.URLS[key]),
                               '<a class="moduleCard" data-goto="%s"' % key, body)
+            body = body + HEATMAP_HTML
         body = prefix_ids(body, mod, is_js=False)
         module_blocks.append("/* ====== module: %s ====== */\n%s" % (mod, build_module_js(mod, module_js)))
         views.append('<div class="view" id="view_%s">\n%s\n%s\n</div>' % (mod, hero, body))

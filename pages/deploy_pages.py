@@ -10,14 +10,17 @@ SKILL_DIR = r"D:/workbuddy/resources/app.asar.unpacked/resources/plugins/workbud
 PAGE_DIR = os.path.join(SKILL_DIR, "page")
 HERE = os.path.dirname(os.path.abspath(__file__))
 
+SINGLE = "00-总览台.html"
+
+# 单文件应用：同一个文件推到全部节点，任何旧链接打开都是完整四模块应用
 PAGES = [
-    ("szZlSjyPnnpGwDW4OD4y0X", "00-总览台.html"),
-    ("G9pPkUVWIc6Fk43Mnn1csc", "01-秋招岗位台.html"),
-    ("PQ5cLpifIyB1CaQB2OIMrm", "02-央国企台.html"),
-    ("JgXPaIiaDMGt2xH3vBftAo", "03-成都实习台.html"),
+    ("szZlSjyPnnpGwDW4OD4y0X", SINGLE),
+    ("G9pPkUVWIc6Fk43Mnn1csc", SINGLE),
+    ("PQ5cLpifIyB1CaQB2OIMrm", SINGLE),
+    ("JgXPaIiaDMGt2xH3vBftAo", SINGLE),
 ]
 
-MSG = "合并为单文件应用：页内Tab切换零跳转，四模块共享一次数据加载，总览模块卡改为页内切换"
+MSG = "新增投递热力图（GitHub 贡献图风格，26 周/点击看当天明细/连续投递天数）+ 任意公司情报搜索入口"
 
 
 def run_page_script(name, args, token):

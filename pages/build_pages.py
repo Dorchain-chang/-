@@ -194,6 +194,10 @@ label.fl{display:block;margin:6px 0 0}
 .xcard:hover{box-shadow:var(--shadow-hi);transform:translateY(-2px);border-color:#f0d9ae}
 .xhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .xhead b{font-size:15px;flex:none}
+/* ---------- 公司情报快捷搜索 ---------- */
+.qintel{display:flex;gap:8px;margin-bottom:10px}
+.qintel input{flex:1;height:40px;border:1px solid var(--line);border-radius:8px;padding:0 12px;font-size:14px;font-family:inherit;background:#fff;min-width:0}
+.qintel input:focus{outline:none;border-color:var(--pri);box-shadow:0 0 0 3px var(--pri-soft)}
 /* ---------- 弹层 ---------- */
 #lnkModal .lnk-card{background:#fff;border-radius:18px;max-width:520px;width:100%;padding:20px;box-shadow:0 24px 60px rgba(15,23,42,.25);animation:pop .18s ease}
 @keyframes pop{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}
@@ -414,6 +418,10 @@ def page_overview(urls):
 
 <section>
   <h2><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>投递跟踪<span class="cnt" id="appCnt"></span></h2>
+  <div class="qintel">
+    <input id="qiInput" placeholder="表里没有的企业？输入任意公司名，直接查面经/薪资/官网">
+    <button type="button" class="btn btn-pri" id="qiBtn">查企业情报</button>
+  </div>
   <details class="add"><summary>添加投递记录</summary>
     <form id="appForm">
       <div class="formrow">
@@ -498,6 +506,12 @@ function renderModuleCounts(){
   setText('cntAutumn',aut);setText('cntSOE',soe);setText('cntIntern',state.interns.length);
   markBindable($('cntAutumn'),JOBS_ID);markBindable($('cntSOE'),JOBS_ID);markBindable($('cntIntern'),INTERN_ID);
 }
+function bindQuickIntel(){
+  var inp=$('qiInput'),btn=$('qiBtn');if(!inp||!btn)return;
+  function go(){var v=inp.value.replace(/^\s+|\s+$/g,'');if(v)showIntel(v)}
+  btn.addEventListener('click',go);
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();go()}});
+}
 function renderFunnel(){
   var svg=$('funnelSvg');
   if(!svg.childNodes.length){
@@ -564,6 +578,7 @@ function init(){
   setText('syncTxt','已同步');
   bindSubmitApp();
   bindFormCache('appForm');
+  bindQuickIntel();
   $('lnkClose').addEventListener('click',function(){$('lnkModal').style.display='none'});
   $('lnkModal').addEventListener('click',function(e){if(e.target===$('lnkModal'))$('lnkModal').style.display='none'});
   $('todayMine').addEventListener('change',function(){state.todayMine=$('todayMine').checked;renderToday()});
