@@ -265,6 +265,25 @@ const MOCK = `
   console.log('情报收件箱: 待确认', inboxUi ? inboxUi.n : '无', '条 计数', inboxUi && inboxUi.cnt, '| 公司:', inboxUi ? inboxUi.companies.join('/') : '-');
   console.log('  确认→展开写入条:', pickVisible, '| 默认阶段:', defStage, '| 写库次数', writesBefore, '→', writesAfter);
   if (!inboxUi || inboxUi.n !== 2 || !pickVisible || defStage !== '笔试' || writesAfter - writesBefore < 2) errors.push('inbox UI broken');
+
+  // 主题色面板
+  const theme = await page.evaluate(() => {
+    const b = document.getElementById('themebtn');
+    if (!b) return { ok: false };
+    b.click();
+    const pop = document.getElementById('themepop');
+    const open = !!pop && pop.classList.contains('open');
+    const sws = pop ? Array.from(pop.querySelectorAll('.sw')) : [];
+    if (sws[2]) sws[2].click();
+    const pri = getComputedStyle(document.documentElement).getPropertyValue('--pri').trim();
+    const grad = getComputedStyle(document.documentElement).getPropertyValue('--grad');
+    const saved = localStorage.getItem('wb_theme');
+    const rgbVar = getComputedStyle(document.documentElement).getPropertyValue('--pri-rgb').trim();
+    localStorage.removeItem('wb_theme');
+    return { ok: true, open, n: sws.length, pri, gradHas: grad.indexOf('linear-gradient') === 0, saved, rgbVar };
+  });
+  console.log('主题面板: 打开=', theme.open, '| 预设数=', theme.n, '| 切预设后 --pri=', theme.pri, '| 渐变生效=', theme.gradHas, '| 持久化=', theme.saved, '| --pri-rgb=', theme.rgbVar);
+  if (!theme.ok || !theme.open || theme.n < 7 || !theme.gradHas) errors.push('theme picker broken');
   console.log('--- 实时订阅 ---');
   console.log('外部变更前 query:', beforeQueries, '→ 后:', afterQueries, '| 触发重拉:', afterQueries > beforeQueries, '| handler 实际执行次数:', fired);
   if (mem) console.log('JS 堆: 已用', mem.usedMB, 'MB / 总量', mem.totalMB, 'MB');

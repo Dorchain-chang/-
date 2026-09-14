@@ -20,7 +20,7 @@ PAGES = [
     ("JgXPaIiaDMGt2xH3vBftAo", SINGLE),
 ]
 
-MSG = "新增情报收件箱：邮件/短信解析的笔试·面试·Offer 通知先进收件箱待确认，人工确认后才写入投递跟踪（解析只是建议，不自动改状态）"
+MSG = "新增主题色自定义：顶栏调色按钮，7 款预设配色 + 任意自定义取色，导航/按钮/高亮/阴影全链换色，选择自动记忆（存本机不回传）"
 
 
 def run_page_script(name, args, token):
