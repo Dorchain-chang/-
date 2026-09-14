@@ -90,7 +90,8 @@
 │   └── index.html                 #   · 合并版应用 + mock 数据
 ├── docs/
 │   ├── DEPLOY.md                  # 部署到腾讯文档·资料库的步骤
-│   └── AUDIT-2026-09-14.md        # 上线前终检报告（保密/安全/内存/存储/稳定/牛客）
+│   ├── AUDIT-2026-09-14.md        # 上线前终检报告（保密/安全/内存/存储/稳定/牛客）
+│   └── MAIL-SETUP.md              # 校招通知邮箱接入指南（转发收口 / IMAP 直读桥 + 面试话术）
 └── .github/workflows/
     ├── deploy-demo.yml            # push 后自动构建 demo/ 并部署到 GitHub Pages
     └── lint.yml                   # 语法 + 自包含 + 合并版标记 + 转义守卫 + 一致性 + 浏览器冒烟

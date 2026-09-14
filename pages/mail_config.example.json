@@ -1,0 +1,10 @@
+{
+  "accounts": [
+    { "provider": "qq", "user": "你的QQ号@qq.com", "auth_code": "在QQ邮箱设置-账户-开启IMAP后生成的16位授权码" },
+    { "provider": "gmail", "user": "你@gmail.com", "auth_code": "两步验证-应用专用密码生成的16位密码" }
+  ],
+  "keywords": ["笔试", "面试", "测评", "offer", "录用", "复试", "感谢"],
+  "exclude": ["面经", "经验分享", "攻略", "题库", "回忆版"],
+  "since_days": 3,
+  "max_per_account": 100
+}
