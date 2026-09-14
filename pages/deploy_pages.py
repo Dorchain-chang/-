@@ -20,7 +20,7 @@ PAGES = [
     ("JgXPaIiaDMGt2xH3vBftAo", SINGLE),
 ]
 
-MSG = "新增主题色自定义：顶栏调色按钮，7 款预设配色 + 任意自定义取色，导航/按钮/高亮/阴影全链换色，选择自动记忆（存本机不回传）"
+MSG = "总览拆分：今日提醒（含近况总览）与个人中心分离；导航可切换左侧竖排/顶部横排（记忆偏好）；主题色自定义"
 
 
 def run_page_script(name, args, token):

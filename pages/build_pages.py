@@ -71,6 +71,22 @@ nav.tabbar .sync.warn .dot{background:var(--orange);box-shadow:0 0 0 3px rgba(22
 .themepop .crow{display:flex;gap:8px;align-items:center}
 .themepop input[type=color]{width:36px;height:30px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:2px;cursor:pointer}
 .themepop .hint{font-size:12px;color:var(--sub)}
+/* ---------- 布局切换：左侧竖排导航 ---------- */
+.navtoggle{flex:none;width:34px;height:34px;border-radius:999px;border:1px solid var(--line);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;margin-left:4px}
+.navtoggle svg{width:17px;height:17px;stroke:var(--sub)}
+.navtoggle:hover{border-color:var(--pri);box-shadow:0 0 0 3px rgba(var(--pri-rgb),.13)}
+body.navside nav.tabbar{position:fixed;left:0;top:0;bottom:0;width:184px;height:auto;border-bottom:none;border-right:1px solid var(--line);box-shadow:var(--shadow)}
+body.navside nav.tabbar .inner{flex-direction:column;align-items:stretch;height:100%;overflow-y:auto;overflow-x:hidden;padding:16px 12px;gap:4px}
+body.navside nav.tabbar .logo{margin:0 0 10px}
+body.navside nav.tabbar .tab{text-align:left}
+body.navside nav.tabbar .sync{margin-left:0;margin-top:auto;justify-content:flex-start}
+body.navside{padding-left:184px}
+@media (max-width:900px){
+  body.navside{padding-left:0}
+  body.navside nav.tabbar{position:sticky;width:auto;height:auto;border-bottom:1px solid rgba(230,234,242,.9);border-right:none;box-shadow:none}
+  body.navside nav.tabbar .inner{flex-direction:row;align-items:center;height:auto;overflow-x:auto;overflow-y:hidden;padding:10px 16px;gap:6px}
+  body.navside nav.tabbar .sync{margin-left:auto;margin-top:0}
+}
 /* ---------- Hero 横幅 ---------- */
 .hero{max-width:1000px;margin:18px auto 0;padding:0 16px}
 .hero .hero-in{border-radius:20px;padding:22px 24px;color:#fff;display:flex;align-items:center;gap:16px;position:relative;overflow:hidden;background:var(--grad);box-shadow:0 10px 28px rgba(var(--pri-rgb),.30)}
@@ -466,7 +482,22 @@ function initTheme(){
  var saved=null;try{saved=localStorage.getItem('wb_theme')}catch(err){}
  if(saved&&saved.indexOf(' ')>0){var p=saved.split(' ');applyTheme(p[0],p[1],false)}
 }
-if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',initTheme)}else{initTheme()}
+function initNavLayout(){
+ var bar=document.querySelector('nav.tabbar .inner');
+ if(!bar||document.getElementById('navtoggle'))return;
+ var btn=document.createElement('button');btn.type='button';btn.className='navtoggle';btn.id='navtoggle';btn.title='切换导航布局';btn.setAttribute('aria-label','切换导航布局（左侧竖排 / 顶部横排）');
+ btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>';
+ bar.appendChild(btn);
+ var pref=null;try{pref=localStorage.getItem('wb_layout')}catch(err){}
+ function apply(on){document.body.classList.toggle('navside',on);btn.title=on?'切换到顶部导航':'切换到左侧竖排导航'}
+ function want(){var wide=window.matchMedia&&window.matchMedia('(min-width:901px)').matches;return pref==='side'||(pref===null&&wide)}
+ function refresh(){apply(want())}
+ btn.addEventListener('click',function(){var on=document.body.classList.contains('navside');pref=on?'top':'side';try{localStorage.setItem('wb_layout',pref)}catch(err){}refresh()});
+ var rt;window.addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(refresh,150)});
+ refresh();
+}
+function bootChrome(){initTheme();initNavLayout()}
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',bootChrome)}else{bootChrome()}
 """
 
 
@@ -474,7 +505,8 @@ NAV_HTML = """
 <nav class="tabbar">
   <div class="inner">
     <a class="logo" target="_top" href="{OVERVIEW_URL}"><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>秋招求职台</a>
-    <a class="tab" target="_top" href="{OVERVIEW_URL}" {OVERVIEW_ACTIVE}>总览</a>
+    <a class="tab" target="_top" href="{OVERVIEW_URL}#today" data-sub="today">今日提醒</a>
+    <a class="tab" target="_top" href="{OVERVIEW_URL}" data-sub="me" {OVERVIEW_ACTIVE}>个人中心</a>
     <a class="tab" target="_top" href="{AUTUMN_URL}" {AUTUMN_ACTIVE}>秋招岗位</a>
     <a class="tab" target="_top" href="{SOE_URL}" {SOE_ACTIVE}>央国企</a>
     <a class="tab" target="_top" href="{INTERN_URL}" {INTERN_ACTIVE}>成都实习</a>
@@ -531,6 +563,7 @@ def page_overview(urls):
         OVERVIEW_ACTIVE='aria-current="page"', AUTUMN_ACTIVE='', SOE_ACTIVE='', INTERN_ACTIVE='',
     )
     body = """
+<div id="ovToday">
 <section>
   <h2><svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>今天要处理<span class="cnt" id="todayCnt"></span></h2>
   <label class="legend"><input type="checkbox" id="todayMine" checked style="min-height:0;margin:0">只看 AI/计算机相关 · 北京/成都/天津（关掉看全部）</label>
@@ -538,6 +571,18 @@ def page_overview(urls):
   <div id="todayList"><div class="empty">加载中…</div></div>
 </section>
 
+<section>
+  <h2><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>近况总览</h2>
+  <div class="stats">
+    <div class="stat"><b id="tdW7">0</b><span>近7天新投</span></div>
+    <div class="stat"><b id="tdNode">0</b><span>进行中节点</span></div>
+    <div class="stat"><b id="tdIb">0</b><span>收件箱待确认</span></div>
+    <div class="stat"><b id="tdTotal">0</b><span>累计投递</span></div>
+  </div>
+</section>
+</div>
+
+<div id="ovMe" style="display:none">
 <div class="stats">
   <div class="stat" style="border-color:#f3c1c1"><b id="stWait" data-sp-bindable="database" data-sp-database-id="GgZ71tywhs4HEZytFSqXTP">0</b><span>待投递岗位</span></div>
   <div class="stat"><b id="stDone" data-sp-bindable="database" data-sp-database-id="GgZ71tywhs4HEZytFSqXTP">0</b><span>已投递</span></div>
@@ -597,6 +642,8 @@ def page_overview(urls):
   <div class="mtail">投递漏斗（各阶段当前数量）</div>
   <div class="cards" id="appCards" style="margin-top:10px"><div class="empty">加载中…</div></div>
 </section>
+<div id="hmAnchor"></div>
+</div>
 """.format(AUTUMN=urls["autumn"], SOE=urls["soe"], INTERN=urls["intern"])
     tpl_app = """
 <div hidden id="tplBox">
@@ -839,7 +886,27 @@ function confirmInbox(r,stage,dateStr){
   }
   return q.then(mark).then(reloadAll).catch(function(e){console.error('[database] 确认写入失败:'+((e&&e.message)||String(e)));alert('写入失败，请稍后重试')});
 }
-function refreshAll(){renderToday();renderStats();renderModuleCounts();renderFunnel();renderInbox();renderApps();}
+function renderTdStats(){
+  var now=Date.now(),w7=0,nodes=0,ib=0,i,a,v,p,st;
+  for(i=0;i<state.apps.length;i++){a=state.apps[i];v=dOnly(a['投递日期']);
+    if(v){p=v.split('-');if(p.length===3){var t=new Date(+p[0],+p[1]-1,+p[2]).getTime();if(now-t<=6048e5)w7++}}
+    st=plain(a['当前阶段']);if(st==='笔试'||st==='一面'||st==='二面'||st==='HR面')nodes++}
+  for(i=0;i<state.inbox.length;i++){if(plain(state.inbox[i]['状态'])==='待确认')ib++}
+  setText('tdW7',w7);setText('tdNode',nodes);setText('tdIb',ib);setText('tdTotal',state.apps.length);
+}
+function ovSub(sub){
+  var td=$('ovToday'),me=$('ovMe');if(!td||!me)return;
+  td.style.display=sub==='today'?'':'none';
+  me.style.display=sub==='me'?'':'none';
+  var hm=$('hmSec');if(hm)hm.style.display=sub==='me'?'':'none';
+  try{history.replaceState(null,'',sub==='today'?'#today':'#me')}catch(err){}
+  Array.prototype.forEach.call(document.querySelectorAll('nav.tabbar .tab'),function(t){
+    var s=t.getAttribute('data-sub');if(!s)return;
+    if(s===sub)t.setAttribute('aria-current','page');else t.removeAttribute('aria-current');
+  });
+}
+window.ovSub=ovSub;
+function refreshAll(){renderToday();renderTdStats();renderStats();renderModuleCounts();renderFunnel();renderInbox();renderApps();}
 
 function bindSubmitApp(){
   var form=$('appForm');if(!form)return;
@@ -861,6 +928,8 @@ function bindSubmitApp(){
 
 function init(){
   db=window.__SMART_PAGE__&&window.__SMART_PAGE__.database;
+  ovSub((location.hash||'').indexOf('me')>=0?'me':'today');
+  window.addEventListener('hashchange',function(){ovSub((location.hash||'').indexOf('me')>=0?'me':'today')});
   bindIntelClose();
   bindExpress();
   if(!db){goOffline();return}

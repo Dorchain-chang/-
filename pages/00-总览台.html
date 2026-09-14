@@ -60,6 +60,22 @@ nav.tabbar .sync.warn .dot{background:var(--orange);box-shadow:0 0 0 3px rgba(22
 .themepop .crow{display:flex;gap:8px;align-items:center}
 .themepop input[type=color]{width:36px;height:30px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:2px;cursor:pointer}
 .themepop .hint{font-size:12px;color:var(--sub)}
+/* ---------- 布局切换：左侧竖排导航 ---------- */
+.navtoggle{flex:none;width:34px;height:34px;border-radius:999px;border:1px solid var(--line);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;margin-left:4px}
+.navtoggle svg{width:17px;height:17px;stroke:var(--sub)}
+.navtoggle:hover{border-color:var(--pri);box-shadow:0 0 0 3px rgba(var(--pri-rgb),.13)}
+body.navside nav.tabbar{position:fixed;left:0;top:0;bottom:0;width:184px;height:auto;border-bottom:none;border-right:1px solid var(--line);box-shadow:var(--shadow)}
+body.navside nav.tabbar .inner{flex-direction:column;align-items:stretch;height:100%;overflow-y:auto;overflow-x:hidden;padding:16px 12px;gap:4px}
+body.navside nav.tabbar .logo{margin:0 0 10px}
+body.navside nav.tabbar .tab{text-align:left}
+body.navside nav.tabbar .sync{margin-left:0;margin-top:auto;justify-content:flex-start}
+body.navside{padding-left:184px}
+@media (max-width:900px){
+  body.navside{padding-left:0}
+  body.navside nav.tabbar{position:sticky;width:auto;height:auto;border-bottom:1px solid rgba(230,234,242,.9);border-right:none;box-shadow:none}
+  body.navside nav.tabbar .inner{flex-direction:row;align-items:center;height:auto;overflow-x:auto;overflow-y:hidden;padding:10px 16px;gap:6px}
+  body.navside nav.tabbar .sync{margin-left:auto;margin-top:0}
+}
 /* ---------- Hero 横幅 ---------- */
 .hero{max-width:1000px;margin:18px auto 0;padding:0 16px}
 .hero .hero-in{border-radius:20px;padding:22px 24px;color:#fff;display:flex;align-items:center;gap:16px;position:relative;overflow:hidden;background:var(--grad);box-shadow:0 10px 28px rgba(var(--pri-rgb),.30)}
@@ -257,7 +273,8 @@ nav.tabbar .tab{cursor:pointer;font-family:inherit}
 <nav class="tabbar">
   <div class="inner">
     <a class="logo" data-goto="overview"><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>秋招求职台</a>
-    <button type="button" class="tab" data-view="overview">总览</button>
+    <button type="button" class="tab" data-view="today" data-sub="today">今日提醒</button>
+    <button type="button" class="tab" data-view="overview" data-sub="me">个人中心</button>
     <button type="button" class="tab" data-view="autumn">秋招岗位</button>
     <button type="button" class="tab" data-view="soe">央国企</button>
     <button type="button" class="tab" data-view="intern">实习直通</button>
@@ -269,6 +286,7 @@ nav.tabbar .tab{cursor:pointer;font-family:inherit}
 <div class="banner" id="offBanner">离线模式：未连接到在线数据表，数据读写暂不可用。请通过资料库链接打开本页面。<button type="button" class="btn btn-sm" id="offRetry" style="margin-left:10px;cursor:pointer">重试连接</button></div>
 <div class="view" id="view_overview">
 <div class="hero "><div class="hero-in"><div class="hero-txt"><h1>求职总览台</h1><p>今天的投递节奏、逾期提醒和全局统计都在这里</p></div><svg class="hero-ic" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg></div></div>
+<div id="ov_ovToday">
 <section>
   <h2><svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>今天要处理<span class="cnt" id="ov_todayCnt"></span></h2>
   <label class="legend"><input type="checkbox" id="ov_todayMine" checked style="min-height:0;margin:0">只看 AI/计算机相关 · 北京/成都/天津（关掉看全部）</label>
@@ -276,6 +294,18 @@ nav.tabbar .tab{cursor:pointer;font-family:inherit}
   <div id="ov_todayList"><div class="empty">加载中…</div></div>
 </section>
 
+<section>
+  <h2><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>近况总览</h2>
+  <div class="stats">
+    <div class="stat"><b id="ov_tdW7">0</b><span>近7天新投</span></div>
+    <div class="stat"><b id="ov_tdNode">0</b><span>进行中节点</span></div>
+    <div class="stat"><b id="ov_tdIb">0</b><span>收件箱待确认</span></div>
+    <div class="stat"><b id="ov_tdTotal">0</b><span>累计投递</span></div>
+  </div>
+</section>
+</div>
+
+<div id="ov_ovMe" style="display:none">
 <div class="stats">
   <div class="stat" style="border-color:#f3c1c1"><b id="ov_stWait" data-sp-bindable="database" data-sp-database-id="GgZ71tywhs4HEZytFSqXTP">0</b><span>待投递岗位</span></div>
   <div class="stat"><b id="ov_stDone" data-sp-bindable="database" data-sp-database-id="GgZ71tywhs4HEZytFSqXTP">0</b><span>已投递</span></div>
@@ -336,6 +366,27 @@ nav.tabbar .tab{cursor:pointer;font-family:inherit}
   <div class="cards" id="ov_appCards" style="margin-top:10px"><div class="empty">加载中…</div></div>
 </section>
 
+<section id="hmSec">
+  <h2 style="color:var(--green)"><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/></svg>投递热力图 · 每日足迹</h2>
+  <div class="hmSum" id="hmSum"></div>
+  <div class="hmWrap"><div class="hmGrid" id="hmGrid"></div></div>
+  <div class="hmLegend">少
+    <span class="sq" style="background:#ebedf0"></span><span class="sq" style="background:#9be9a8"></span><span class="sq" style="background:#40c463"></span><span class="sq" style="background:#30a14e"></span><span class="sq" style="background:#216e39"></span>多
+    <span style="margin-left:10px;display:inline-flex;align-items:center;gap:5px"><span class="sq" style="background:#fff;box-shadow:inset 0 0 0 2px #fff,0 0 0 2px #d97706"></span>有笔试 / 面试 / Offer 节点</span>
+    <span style="margin-left:10px">点击任意格子查看当天明细</span>
+  </div>
+</section>
+
+<div id="hmModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:99;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:70vh;overflow:auto;padding:18px;box-shadow:0 10px 30px rgba(15,23,42,.2)">
+    <b id="hmDate" style="font-size:15px"></b>
+    <div id="hmDetail" style="margin-top:8px"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn btn-gray btn-sm" id="hmClose">关闭</button></div>
+  </div>
+</div>
+
+</div>
+
 <div hidden id="ov_tplBox">
   <div class="acard" id="ov_tplApp">
     <div class="jrow"><b data-field="公司"></b><span style="color:var(--sub);font-size:13px" data-field="岗位"></span><span class="tag" data-field="当前阶段" style="margin-left:auto"></span></div>
@@ -357,25 +408,6 @@ nav.tabbar .tab{cursor:pointer;font-family:inherit}
   </div>
 </div>
 
-
-<section>
-  <h2 style="color:var(--green)"><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/></svg>投递热力图 · 每日足迹</h2>
-  <div class="hmSum" id="hmSum"></div>
-  <div class="hmWrap"><div class="hmGrid" id="hmGrid"></div></div>
-  <div class="hmLegend">少
-    <span class="sq" style="background:#ebedf0"></span><span class="sq" style="background:#9be9a8"></span><span class="sq" style="background:#40c463"></span><span class="sq" style="background:#30a14e"></span><span class="sq" style="background:#216e39"></span>多
-    <span style="margin-left:10px;display:inline-flex;align-items:center;gap:5px"><span class="sq" style="background:#fff;box-shadow:inset 0 0 0 2px #fff,0 0 0 2px #d97706"></span>有笔试 / 面试 / Offer 节点</span>
-    <span style="margin-left:10px">点击任意格子查看当天明细</span>
-  </div>
-</section>
-
-<div id="hmModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:99;align-items:center;justify-content:center;padding:20px">
-  <div style="background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:70vh;overflow:auto;padding:18px;box-shadow:0 10px 30px rgba(15,23,42,.2)">
-    <b id="hmDate" style="font-size:15px"></b>
-    <div id="hmDetail" style="margin-top:8px"></div>
-    <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn btn-gray btn-sm" id="hmClose">关闭</button></div>
-  </div>
-</div>
 
 </div>
 <div class="view" id="view_autumn">
@@ -774,7 +806,22 @@ function initTheme(){
  var saved=null;try{saved=localStorage.getItem('wb_theme')}catch(err){}
  if(saved&&saved.indexOf(' ')>0){var p=saved.split(' ');applyTheme(p[0],p[1],false)}
 }
-if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',initTheme)}else{initTheme()}
+function initNavLayout(){
+ var bar=document.querySelector('nav.tabbar .inner');
+ if(!bar||document.getElementById('navtoggle'))return;
+ var btn=document.createElement('button');btn.type='button';btn.className='navtoggle';btn.id='navtoggle';btn.title='切换导航布局';btn.setAttribute('aria-label','切换导航布局（左侧竖排 / 顶部横排）');
+ btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>';
+ bar.appendChild(btn);
+ var pref=null;try{pref=localStorage.getItem('wb_layout')}catch(err){}
+ function apply(on){document.body.classList.toggle('navside',on);btn.title=on?'切换到顶部导航':'切换到左侧竖排导航'}
+ function want(){var wide=window.matchMedia&&window.matchMedia('(min-width:901px)').matches;return pref==='side'||(pref===null&&wide)}
+ function refresh(){apply(want())}
+ btn.addEventListener('click',function(){var on=document.body.classList.contains('navside');pref=on?'top':'side';try{localStorage.setItem('wb_layout',pref)}catch(err){}refresh()});
+ var rt;window.addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(refresh,150)});
+ refresh();
+}
+function bootChrome(){initTheme();initNavLayout()}
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',bootChrome)}else{bootChrome()}
 
 function fetchJobs(){var out=[],cur=null;function once(){return db.query({databaseId:'GgZ71tywhs4HEZytFSqXTP',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=5000)return out;cur=nx;return once()})}return once()}
 function fetchApps(){var out=[],cur=null;function once(){return db.query({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=3000)return out;cur=nx;return once()})}return once()}
@@ -1009,6 +1056,26 @@ function confirmInbox(r,stage,dateStr){
   }
   return q.then(mark).then(reloadAll).catch(function(e){console.error('[database] 确认写入失败:'+((e&&e.message)||String(e)));alert('写入失败，请稍后重试')});
 }
+function renderTdStats(){
+  var now=Date.now(),w7=0,nodes=0,ib=0,i,a,v,p,st;
+  for(i=0;i<state.apps.length;i++){a=state.apps[i];v=dOnly(a['投递日期']);
+    if(v){p=v.split('-');if(p.length===3){var t=new Date(+p[0],+p[1]-1,+p[2]).getTime();if(now-t<=6048e5)w7++}}
+    st=plain(a['当前阶段']);if(st==='笔试'||st==='一面'||st==='二面'||st==='HR面')nodes++}
+  for(i=0;i<state.inbox.length;i++){if(plain(state.inbox[i]['状态'])==='待确认')ib++}
+  setText('ov_tdW7',w7);setText('ov_tdNode',nodes);setText('ov_tdIb',ib);setText('ov_tdTotal',state.apps.length);
+}
+function ovSub(sub){
+  var td=$('ov_ovToday'),me=$('ov_ovMe');if(!td||!me)return;
+  td.style.display=sub==='today'?'':'none';
+  me.style.display=sub==='me'?'':'none';
+  var hm=$('hmSec');if(hm)hm.style.display=sub==='me'?'':'none';
+  try{history.replaceState(null,'',sub==='today'?'#today':'#me')}catch(err){}
+  Array.prototype.forEach.call(document.querySelectorAll('nav.tabbar .tab'),function(t){
+    var s=t.getAttribute('data-sub');if(!s)return;
+    if(s===sub)t.setAttribute('aria-current','page');else t.removeAttribute('aria-current');
+  });
+}
+window.ovSub=ovSub;
 
 function bindSubmitApp(){
   var form=$('ov_appForm');if(!form)return;
@@ -1028,7 +1095,7 @@ function bindSubmitApp(){
   });
 }
 
-MODS.push({refresh:function(){renderToday();renderStats();renderModuleCounts();renderFunnel();renderInbox();renderApps();renderHeatmap();},setup:function(){fillStageOv();},bind:function(){
+MODS.push({refresh:function(){renderToday();renderTdStats();renderStats();renderModuleCounts();renderFunnel();renderInbox();renderApps();renderHeatmap();},setup:function(){fillStageOv();},bind:function(){
   bindSubmitApp();
   bindFormCache('ov_appForm');
   bindQuickIntel();
@@ -1373,8 +1440,10 @@ MODS.push({refresh:function(){renderInterns();},setup:function(){renderSelectOpt
 
 
 function showView(name){
-  Array.prototype.forEach.call(document.querySelectorAll('.view'),function(v){v.className='view'+(v.id==='view_'+name?' active':'')});
+  var vn=name==='today'?'overview':name;
+  Array.prototype.forEach.call(document.querySelectorAll('.view'),function(v){v.className='view'+(v.id==='view_'+vn?' active':'')});
   Array.prototype.forEach.call(document.querySelectorAll('nav.tabbar .tab'),function(t){if(t.getAttribute('data-view')===name){t.setAttribute('aria-current','page')}else{t.removeAttribute('aria-current')}});
+  if((name==='today'||name==='overview')&&window.ovSub)window.ovSub(name==='today'?'today':'me');
   try{history.replaceState(null,'','#'+name)}catch(e){}
   window.scrollTo(0,0);
 }
@@ -1382,7 +1451,7 @@ function bindTabs(){
   Array.prototype.forEach.call(document.querySelectorAll('nav.tabbar .tab'),function(t){t.addEventListener('click',function(){showView(t.getAttribute('data-view'))})});
   Array.prototype.forEach.call(document.querySelectorAll('[data-goto]'),function(a){a.addEventListener('click',function(e){e.preventDefault();showView(a.getAttribute('data-goto'))})});
   var h=(location.hash||'').replace('#','');
-  showView(['overview','autumn','soe','intern'].indexOf(h)>=0?h:'overview');
+  showView(['overview','autumn','soe','intern','today'].indexOf(h)>=0?h:'today');
 }
 function boot(){
   db=window.__SMART_PAGE__&&window.__SMART_PAGE__.database;

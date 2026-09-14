@@ -21,6 +21,7 @@ MODULES = ["overview", "autumn", "soe", "intern"]
 # ---- per-module ID lists (from body templates) + prefix ----
 IDS = {
     "overview": ["todayCnt","todayMine","todayList","stWait","stDone","stDdl","stLive",
+                 "ovToday","ovMe","tdW7","tdNode","tdIb","tdTotal",
                  "cntAutumn","cntSOE","cntIntern","appCnt","appForm","fStage","funnelSvg",
                  "appCards","tplBox","tplApp"],
     "autumn":   ["jobCnt","jobForm","fBatch","fPrio","batchChips","q","fCity","fCareer",
@@ -35,7 +36,7 @@ PREFIX = {"overview": "ov", "autumn": "at", "soe": "so", "intern": "ir"}
 STATE_FIELDS = ["fBatchF", "fSt", "fCity", "fCareer", "q"]
 
 REFRESH_LINE = {
-    "overview": "function refreshAll(){renderToday();renderStats();renderModuleCounts();renderFunnel();renderInbox();renderApps();}",
+    "overview": "function refreshAll(){renderToday();renderTdStats();renderStats();renderModuleCounts();renderFunnel();renderInbox();renderApps();}",
     "autumn":   "function refreshAll(){renderFilterFacets();renderJobs();}",
     "soe":      "function refreshAll(){renderFilterFacets();renderJobs();}",
     "intern":   "function refreshAll(){renderInterns();}",
@@ -44,7 +45,7 @@ REFRESH_LINE = {
 # hand-written per-module registration (bind/setup) replacing the old init()
 TAIL = {
 "overview": """
-MODS.push({refresh:function(){renderToday();renderStats();renderModuleCounts();renderFunnel();renderInbox();renderApps();renderHeatmap();},setup:function(){fillStageOv();},bind:function(){
+MODS.push({refresh:function(){renderToday();renderTdStats();renderStats();renderModuleCounts();renderFunnel();renderInbox();renderApps();renderHeatmap();},setup:function(){fillStageOv();},bind:function(){
   bindSubmitApp();
   bindFormCache('ov_appForm');
   bindQuickIntel();
@@ -151,7 +152,8 @@ NAV_SINGLE = """
 <nav class="tabbar">
   <div class="inner">
     <a class="logo" data-goto="overview"><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>秋招求职台</a>
-    <button type="button" class="tab" data-view="overview">总览</button>
+    <button type="button" class="tab" data-view="today" data-sub="today">今日提醒</button>
+    <button type="button" class="tab" data-view="overview" data-sub="me">个人中心</button>
     <button type="button" class="tab" data-view="autumn">秋招岗位</button>
     <button type="button" class="tab" data-view="soe">央国企</button>
     <button type="button" class="tab" data-view="intern">实习直通</button>
@@ -161,7 +163,7 @@ NAV_SINGLE = """
 """
 
 HEATMAP_HTML = """
-<section>
+<section id="hmSec">
   <h2 style="color:var(--green)"><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/></svg>投递热力图 · 每日足迹</h2>
   <div class="hmSum" id="hmSum"></div>
   <div class="hmWrap"><div class="hmGrid" id="hmGrid"></div></div>
@@ -207,8 +209,10 @@ nav.tabbar .tab{cursor:pointer;font-family:inherit}
 
 BOOT_JS = r"""
 function showView(name){
-  Array.prototype.forEach.call(document.querySelectorAll('.view'),function(v){v.className='view'+(v.id==='view_'+name?' active':'')});
+  var vn=name==='today'?'overview':name;
+  Array.prototype.forEach.call(document.querySelectorAll('.view'),function(v){v.className='view'+(v.id==='view_'+vn?' active':'')});
   Array.prototype.forEach.call(document.querySelectorAll('nav.tabbar .tab'),function(t){if(t.getAttribute('data-view')===name){t.setAttribute('aria-current','page')}else{t.removeAttribute('aria-current')}});
+  if((name==='today'||name==='overview')&&window.ovSub)window.ovSub(name==='today'?'today':'me');
   try{history.replaceState(null,'','#'+name)}catch(e){}
   window.scrollTo(0,0);
 }
@@ -216,7 +220,7 @@ function bindTabs(){
   Array.prototype.forEach.call(document.querySelectorAll('nav.tabbar .tab'),function(t){t.addEventListener('click',function(){showView(t.getAttribute('data-view'))})});
   Array.prototype.forEach.call(document.querySelectorAll('[data-goto]'),function(a){a.addEventListener('click',function(e){e.preventDefault();showView(a.getAttribute('data-goto'))})});
   var h=(location.hash||'').replace('#','');
-  showView(['overview','autumn','soe','intern'].indexOf(h)>=0?h:'overview');
+  showView(['overview','autumn','soe','intern','today'].indexOf(h)>=0?h:'today');
 }
 function boot(){
   db=window.__SMART_PAGE__&&window.__SMART_PAGE__.database;
@@ -306,7 +310,7 @@ def build():
             for key in MODULES:
                 body = re.sub(r'<a class="moduleCard[^"]*" target="_top" href="%s"' % re.escape(bp.URLS[key]),
                               '<a class="moduleCard" data-goto="%s"' % key, body)
-            body = body + HEATMAP_HTML
+            body = body.replace('<div id="hmAnchor"></div>', HEATMAP_HTML)
         body = prefix_ids(body, mod, is_js=False)
         module_blocks.append("/* ====== module: %s ====== */\n%s" % (mod, build_module_js(mod, module_js)))
         views.append('<div class="view" id="view_%s">\n%s\n%s\n</div>' % (mod, hero, body))

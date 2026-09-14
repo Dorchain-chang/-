@@ -186,10 +186,12 @@ const MOCK = `
   const intelOpen = await page.evaluate(() => getComputedStyle(document.getElementById('intelModal')).display !== 'none');
   await page.click('#intelClose');
   await page.click('nav.tabbar .tab[data-view="overview"]');
+  await page.evaluate(() => { if (window.ovSub) window.ovSub('me'); });
   await page.click('#hmGrid .hm-cell:nth-child(80)');
   const hmOpen = await page.evaluate(() => getComputedStyle(document.getElementById('hmModal')).display !== 'none');
   const hmDetail = await page.textContent('#hmDetail');
   await page.click('#hmClose');
+  // 热力图/阶段/收件箱/漏斗都在「个人中心」子视图内，保持 ovSub('me') 继续测
 
   // 阶段快捷 UI：卡片有 已投/不投 快键；点阶段标签展开全部阶段选项（不点选项，避免触发写库）
   const stageUi = await page.evaluate(() => {
@@ -284,6 +286,46 @@ const MOCK = `
   });
   console.log('主题面板: 打开=', theme.open, '| 预设数=', theme.n, '| 切预设后 --pri=', theme.pri, '| 渐变生效=', theme.gradHas, '| 持久化=', theme.saved, '| --pri-rgb=', theme.rgbVar);
   if (!theme.ok || !theme.open || theme.n < 7 || !theme.gradHas) errors.push('theme picker broken');
+
+  // 今日提醒 / 个人中心 子视图：两个方向各切一次并校验显示与高亮
+  const subs = await page.evaluate(() => {
+    const g = (id) => document.getElementById('ov_' + id) || document.getElementById(id);
+    const td = g('ovToday'), me = g('ovMe');
+    const vis = (e) => !!e && e.style.display !== 'none';
+    const tabs = Array.from(document.querySelectorAll('nav.tabbar .tab'));
+    const tdTab = tabs.find((t) => t.textContent === '今日提醒');
+    const meTab = tabs.find((t) => t.textContent === '个人中心');
+    if (!tdTab || !meTab) return { missing: true };
+    tdTab.click();
+    const onTd = { td: vis(td), me: vis(me), tdTabOn: tdTab.getAttribute('aria-current') === 'page' };
+    meTab.click();
+    const onMe = { td: vis(td), me: vis(me), meTabOn: meTab.getAttribute('aria-current') === 'page' };
+    const stats = ['tdW7', 'tdNode', 'tdIb', 'tdTotal'].map((id) => { const e = g(id); return e ? e.textContent : '?'; });
+    return { onTd, onMe, stats };
+  });
+  if (subs.missing) {
+    console.log('子视图: 未找到 今日提醒/个人中心 Tab');
+    errors.push('overview tabs missing');
+  } else {
+    console.log('子视图: 切今日提醒', subs.onTd.td && !subs.onTd.me, '| 高亮今日Tab=', subs.onTd.tdTabOn, '| 切个人中心', subs.onMe.me && !subs.onMe.td, '| 高亮个人Tab=', subs.onMe.meTabOn, '| 近况统计=', subs.stats.join('/'));
+    if (!subs.onTd.td || subs.onTd.me || !subs.onTd.tdTabOn || !subs.onMe.me || subs.onMe.td || !subs.onMe.meTabOn) errors.push('overview split broken');
+  }
+
+  // 导航布局切换（左侧竖排 ⇄ 顶部横排）
+  const layout = await page.evaluate(() => {
+    const b = document.getElementById('navtoggle');
+    if (!b) return { ok: false };
+    const start = document.body.classList.contains('navside');
+    b.click();
+    const flipped = document.body.classList.contains('navside');
+    const saved = localStorage.getItem('wb_layout');
+    b.click();
+    const back = document.body.classList.contains('navside');
+    localStorage.removeItem('wb_layout');
+    return { ok: true, start, flipped, saved, back };
+  });
+  console.log('布局切换: 按钮=', layout.ok, '| 初始侧栏=', layout.start, '| 点击后=', layout.flipped, '| 持久化=', layout.saved, '| 再点还原=', layout.back);
+  if (!layout.ok || layout.flipped === layout.start) errors.push('nav layout toggle broken');
   console.log('--- 实时订阅 ---');
   console.log('外部变更前 query:', beforeQueries, '→ 后:', afterQueries, '| 触发重拉:', afterQueries > beforeQueries, '| handler 实际执行次数:', fired);
   if (mem) console.log('JS 堆: 已用', mem.usedMB, 'MB / 总量', mem.totalMB, 'MB');
