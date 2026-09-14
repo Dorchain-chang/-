@@ -1,0 +1,67 @@
+<svg viewBox="0 0 680 412" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <g class="node c-gray">
+    <rect x="50" y="40" width="130" height="44" rx="8" stroke-width="0.5"/>
+    <text class="th" x="115" y="62" text-anchor="middle" dominant-baseline="central">QQ 邮箱</text>
+  </g>
+  <g class="node c-gray">
+    <rect x="200" y="40" width="150" height="44" rx="8" stroke-width="0.5"/>
+    <text class="th" x="275" y="62" text-anchor="middle" dominant-baseline="central">163 / Gmail / Outlook</text>
+  </g>
+  <g class="node c-gray">
+    <rect x="370" y="40" width="120" height="44" rx="8" stroke-width="0.5"/>
+    <text class="th" x="430" y="62" text-anchor="middle" dominant-baseline="central">企业邮箱</text>
+  </g>
+  <g class="node c-gray">
+    <rect x="510" y="40" width="120" height="44" rx="8" stroke-width="0.5"/>
+    <text class="th" x="570" y="62" text-anchor="middle" dominant-baseline="central">短信转发 APP</text>
+  </g>
+  <path class="arr" fill="none" d="M115 84 L115 112"/>
+  <path class="arr" fill="none" d="M275 84 L275 112"/>
+  <path class="arr" fill="none" d="M430 84 L430 112"/>
+  <path class="arr" fill="none" d="M570 84 L570 112"/>
+  <path d="M115 112 L570 112" fill="none" stroke="var(--color-border-secondary, #B4B2A9)" stroke-width="1"/>
+  <path class="arr" fill="none" d="M185 112 L185 138"/>
+  <path class="arr" fill="none" d="M495 112 L495 138"/>
+  <text class="ts" x="630" y="130" text-anchor="end">① 取信层 · 适配发生在这里</text>
+  <g class="node c-blue">
+    <rect x="60" y="140" width="250" height="72" rx="12" stroke-width="0.5"/>
+    <text class="th" x="185" y="166" text-anchor="middle" dominant-baseline="central">路线 A · 关键词转发收口</text>
+    <text class="ts" x="185" y="188" text-anchor="middle" dominant-baseline="central">各邮箱设自动转发 → 收口邮箱</text>
+  </g>
+  <g class="node c-teal">
+    <rect x="370" y="140" width="250" height="72" rx="12" stroke-width="0.5"/>
+    <text class="th" x="495" y="166" text-anchor="middle" dominant-baseline="central">路线 B · 本地 IMAP 桥</text>
+    <text class="ts" x="495" y="188" text-anchor="middle" dominant-baseline="central">授权码直读 · mail_bridge.py</text>
+  </g>
+  <path class="arr" fill="none" d="M185 212 L185 246"/>
+  <path class="arr" fill="none" d="M495 212 L495 246"/>
+  <g class="node c-gray">
+    <rect x="60" y="248" width="560" height="44" rx="8" stroke-width="0.5"/>
+    <text class="th" x="340" y="270" text-anchor="middle" dominant-baseline="central">统一消息格式 → 解析器：类型分类 · 公司名归一化（牛客映射）</text>
+  </g>
+  <text class="ts" x="630" y="306" text-anchor="end">② 解析层 · 换邮箱零改动</text>
+  <path class="arr" fill="none" d="M340 292 L340 322"/>
+  <g class="node c-gray">
+    <rect x="50" y="324" width="190" height="56" rx="8" stroke-width="0.5"/>
+    <text class="th" x="145" y="344" text-anchor="middle" dominant-baseline="central">情报收件箱表</text>
+    <text class="ts" x="145" y="364" text-anchor="middle" dominant-baseline="central">只列待确认建议</text>
+  </g>
+  <path class="arr" fill="none" d="M240 352 L268 352"/>
+  <g class="node c-gray">
+    <rect x="272" y="324" width="140" height="56" rx="8" stroke-width="0.5"/>
+    <text class="th" x="342" y="344" text-anchor="middle" dominant-baseline="central">人工确认 / 忽略</text>
+    <text class="ts" x="342" y="364" text-anchor="middle" dominant-baseline="central">建议永不直改</text>
+  </g>
+  <path class="arr" fill="none" d="M412 352 L440 352"/>
+  <g class="node c-gray">
+    <rect x="444" y="324" width="186" height="56" rx="8" stroke-width="0.5"/>
+    <text class="th" x="537" y="344" text-anchor="middle" dominant-baseline="central">投递跟踪表</text>
+    <text class="ts" x="537" y="364" text-anchor="middle" dominant-baseline="central">阶段 + 下次节点</text>
+  </g>
+  <text class="ts" x="630" y="396" text-anchor="end">③ 数据层 · 不变</text>
+</svg>

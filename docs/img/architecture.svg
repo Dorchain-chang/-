@@ -1,0 +1,89 @@
+<svg viewBox="0 0 680 528" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <text class="ts" x="60" y="30">① 数据源（官方推送 / 无反爬通道优先）</text>
+  <g class="node c-blue">
+    <rect x="60" y="40" width="170" height="44" rx="8" stroke-width="0.5"/>
+    <text class="th" x="145" y="62" text-anchor="middle" dominant-baseline="central">牛客校招日程 API</text>
+  </g>
+  <g class="node c-teal">
+    <rect x="255" y="40" width="170" height="44" rx="8" stroke-width="0.5"/>
+    <text class="th" x="340" y="62" text-anchor="middle" dominant-baseline="central">邮件通知（转发 / IMAP）</text>
+  </g>
+  <g class="node c-gray">
+    <rect x="450" y="40" width="170" height="44" rx="8" stroke-width="0.5"/>
+    <text class="th" x="535" y="62" text-anchor="middle" dominant-baseline="central">手动收录（BOSS / 官网）</text>
+  </g>
+  <path class="arr" fill="none" d="M145 84 L145 134"/>
+  <path class="arr" fill="none" d="M340 84 L340 134"/>
+  <path class="arr" fill="none" d="M535 84 L535 134"/>
+  <text class="ts" x="60" y="126">② 处理与自动化</text>
+  <g class="node c-blue">
+    <rect x="60" y="136" width="170" height="44" rx="8" stroke-width="0.5"/>
+    <text class="th" x="145" y="158" text-anchor="middle" dominant-baseline="central">09:00 牛客自动同步</text>
+  </g>
+  <g class="node c-teal">
+    <rect x="255" y="136" width="170" height="44" rx="8" stroke-width="0.5"/>
+    <text class="th" x="340" y="158" text-anchor="middle" dominant-baseline="central">解析为建议 → 收件箱表</text>
+  </g>
+  <g class="node c-gray">
+    <rect x="450" y="136" width="170" height="44" rx="8" stroke-width="0.5"/>
+    <text class="th" x="535" y="158" text-anchor="middle" dominant-baseline="central">应用内一键收录 / 标已投</text>
+  </g>
+  <path class="arr" fill="none" d="M145 180 L145 230"/>
+  <path class="arr" fill="none" d="M340 180 L340 206 L563 206 L563 230"/>
+  <path class="arr" fill="none" d="M535 180 L535 194 L267 194 L267 230"/>
+  <text class="ts" x="60" y="222">③ 云端数据层 · 腾讯文档资料库</text>
+  <g class="node c-gray">
+    <rect x="50" y="232" width="138" height="44" rx="8" stroke-width="0.5"/>
+    <text class="th" x="119" y="254" text-anchor="middle" dominant-baseline="central">秋招岗位清单</text>
+  </g>
+  <g class="node c-gray">
+    <rect x="198" y="232" width="138" height="44" rx="8" stroke-width="0.5"/>
+    <text class="th" x="267" y="254" text-anchor="middle" dominant-baseline="central">投递跟踪</text>
+  </g>
+  <g class="node c-gray">
+    <rect x="346" y="232" width="138" height="44" rx="8" stroke-width="0.5"/>
+    <text class="th" x="415" y="254" text-anchor="middle" dominant-baseline="central">成都实习</text>
+  </g>
+  <g class="node c-gray">
+    <rect x="494" y="232" width="138" height="44" rx="8" stroke-width="0.5"/>
+    <text class="th" x="563" y="254" text-anchor="middle" dominant-baseline="central">情报收件箱</text>
+  </g>
+  <path class="arr" fill="none" d="M340 276 L340 338"/>
+  <text class="ts" x="352" y="310">SDK 实时读写 · 多设备同步</text>
+  <text class="ts" x="60" y="330">④ 应用层</text>
+  <g class="node c-blue">
+    <rect x="50" y="340" width="582" height="64" rx="12" stroke-width="0.5"/>
+    <text class="th" x="341" y="364" text-anchor="middle" dominant-baseline="central">单文件应用 v16 · 总览 / 秋招 / 央国企 / 实习 页内 Tab 切换</text>
+    <text class="ts" x="341" y="386" text-anchor="middle" dominant-baseline="central">今天要处理 · 投递热力图 · 收件箱一键确认 · 牛客企业深链 · 阶段快键</text>
+  </g>
+  <path class="arr" fill="none" d="M341 404 L341 450"/>
+  <text class="ts" x="60" y="444">⑤ 构建与部署流水线（预检全绿才上线）</text>
+  <g class="node c-gray">
+    <rect x="50" y="452" width="132" height="56" rx="8" stroke-width="0.5"/>
+    <text class="th" x="116" y="472" text-anchor="middle" dominant-baseline="central">build_pages.py</text>
+    <text class="ts" x="116" y="492" text-anchor="middle" dominant-baseline="central">生成独立模块页</text>
+  </g>
+  <path class="arr" fill="none" d="M184 480 L198 480"/>
+  <g class="node c-gray">
+    <rect x="200" y="452" width="132" height="56" rx="8" stroke-width="0.5"/>
+    <text class="th" x="266" y="472" text-anchor="middle" dominant-baseline="central">build_single.py</text>
+    <text class="ts" x="266" y="492" text-anchor="middle" dominant-baseline="central">合并单文件</text>
+  </g>
+  <path class="arr" fill="none" d="M334 480 L348 480"/>
+  <g class="node c-gray">
+    <rect x="350" y="452" width="132" height="56" rx="8" stroke-width="0.5"/>
+    <text class="th" x="416" y="472" text-anchor="middle" dominant-baseline="central">deploy_pages.py</text>
+    <text class="ts" x="416" y="492" text-anchor="middle" dominant-baseline="central">推送 4 节点</text>
+  </g>
+  <path class="arr" fill="none" d="M484 480 L498 480"/>
+  <g class="node c-gray">
+    <rect x="500" y="452" width="132" height="56" rx="8" stroke-width="0.5"/>
+    <text class="th" x="566" y="472" text-anchor="middle" dominant-baseline="central">CI lint + 冒烟</text>
+    <text class="ts" x="566" y="492" text-anchor="middle" dominant-baseline="central">15 项预检</text>
+  </g>
+</svg>
