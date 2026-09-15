@@ -287,6 +287,120 @@ const MOCK = `
   console.log('主题面板: 打开=', theme.open, '| 预设数=', theme.n, '| 切预设后 --pri=', theme.pri, '| 渐变生效=', theme.gradHas, '| 持久化=', theme.saved, '| --pri-rgb=', theme.rgbVar);
   if (!theme.ok || !theme.open || theme.n < 7 || !theme.gradHas) errors.push('theme picker broken');
 
+  // AI 设置（BYOK + Mock）：预设联动、无 Key 测试进演示模式
+  const ai = await page.evaluate(() => {
+    const g = (id) => document.getElementById('ov_' + id) || document.getElementById(id);
+    const prov = g('aiProvider'), base = g('aiBase'), model = g('aiModel'), test = g('aiTest'), status = g('aiStatus');
+    if (!prov || !test) return { missing: true };
+    prov.value = 'kimi';
+    prov.dispatchEvent(new Event('change'));
+    const filled = base.value.indexOf('moonshot') >= 0 && !!model.value;
+    test.click();
+    const st = status.textContent;
+    return { filled, st, isMock: st.indexOf('Mock') >= 0 || st.indexOf('演示') >= 0 };
+  });
+  if (ai.missing) {
+    console.log('AI设置: 未找到面板');
+    errors.push('ai settings missing');
+  } else {
+    console.log('AI设置: 预设联动=', ai.filled, '| 无Key测试状态=', ai.st);
+    if (!ai.filled || !ai.isMock) errors.push('ai settings broken');
+  }
+
+  // 简历档案（多份 + 意向 + Mock 解析）与投递画像（Mock 生成）
+  const resume = await page.evaluate(() => {
+    const g = (id) => document.getElementById('ov_' + id) || document.getElementById(id);
+    const list = g('rsList'), gen = g('rpGen');
+    if (!list || !gen) return { missing: true };
+    const old = localStorage.getItem('wb_resumes');
+    localStorage.setItem('wb_resumes', JSON.stringify([
+      { id: 'rsmoke1', name: '冒烟测试版', intent: 'AI 大模型实习', note: '突出 RAG', text: '张三 本科 Python PyTorch RAG 项目…', parsed: null, parsedAt: '', at: '2026-09-15' },
+      { id: 'rsmoke2', name: '数据运营版', intent: 'AI 数据运营', note: '', text: '李四 数据清洗 标注…', parsed: null, parsedAt: '', at: '2026-09-15' }
+    ]));
+    if (window.rsRender) window.rsRender();
+    const cards = list.querySelectorAll('.acard').length;
+    const cnt = (g('rsCount') || {}).textContent || '';
+    const tags = Array.from(list.querySelectorAll('.tag')).map((t) => t.textContent);
+    // Mock 解析第一份（无 Key → 演示解析结果）
+    const btn = list.querySelector('.acard .rsparse') || Array.from(list.querySelectorAll('.acard button')).find((b) => b.textContent === 'AI 解析');
+    let parsedOk = false;
+    if (btn) { btn.click(); parsedOk = (localStorage.getItem('wb_resumes') || '').indexOf('已解析') >= 0 || (JSON.parse(localStorage.getItem('wb_resumes') || '[]')[0] || {}).parsed != null; }
+    // Mock 画像
+    gen.click();
+    const out = g('rpOut');
+    const profileOk = !!out && out.style.display !== 'none' && out.textContent.indexOf('画像') >= 0;
+    // 还原
+    if (old != null) localStorage.setItem('wb_resumes', old); else localStorage.removeItem('wb_resumes');
+    localStorage.removeItem('wb_profile');
+    if (window.rsRender) window.rsRender();
+    return { cards, cnt, tags: tags.join('|'), parsedOk, profileOk };
+  });
+  if (resume.missing) {
+    console.log('简历档案: 未找到模块');
+    errors.push('resume module missing');
+  } else {
+    console.log('简历档案: 卡片数=', resume.cards, '| 计数=', resume.cnt, '| 意向标签=', resume.tags, '| Mock解析=', resume.parsedOk, '| Mock画像=', resume.profileOk);
+    if (resume.cards < 2 || !resume.parsedOk || !resume.profileOk) errors.push('resume/profile broken');
+  }
+
+  // M2 匹配打分：无简历提示 → Mock 打分出徽章 → 按匹配度排序
+  const match = await page.evaluate(async () => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const tabs = Array.from(document.querySelectorAll('nav.tabbar .tab'));
+    const at = tabs.find((t) => t.getAttribute('data-view') === 'autumn');
+    if (at) at.click();
+    await sleep(60);
+    const card0 = window.mtCardAt && window.mtCardAt(0);
+    const card1 = window.mtCardAt && window.mtCardAt(1);
+    if (!card0 || !card0.__mtRec) return { missing: true };
+    const rec0 = card0.__mtRec, rec1 = card1 && card1.__mtRec;
+    const sRes = localStorage.getItem('wb_resumes'), sJd = localStorage.getItem('wb_jd'), sMt = localStorage.getItem('wb_match');
+    // ① 无简历 → 提示 + 不写结果
+    localStorage.removeItem('wb_resumes');
+    card0.querySelector('.jmatch').click();
+    await sleep(30);
+    const row0 = card0.querySelector('.jmatchrow');
+    const noResumeHint = !!row0 && row0.textContent.indexOf('简历档案') >= 0 && row0.textContent.indexOf('上传简历') >= 0;
+    const noWrite = !window.mtGet(rec0);
+    // ② 有简历 + JD → Mock 打分出徽章
+    localStorage.setItem('wb_resumes', JSON.stringify([{ id: 'r-mt', name: '打分测试版', intent: 'AI 大模型实习', note: '', text: 'Python PyTorch RAG 项目', parsed: null, at: '2026-09-15' }]));
+    window.mtJdSet(rec0, '任职要求：熟悉 Python、PyTorch，有 RAG 项目经验优先');
+    const jdOk = (window.mtJdGet(rec0) || '').indexOf('PyTorch') >= 0;
+    card0.querySelector('.jmatch').click();
+    await sleep(40);
+    const badge0 = !!row0 && row0.textContent.indexOf('分') >= 0;
+    const stored0 = window.mtGet(rec0);
+    const storedOk = !!stored0 && typeof stored0.score === 'number';
+    // ③ 按匹配度排序：塞两条不同分数，校验降序（95 分应排最前）
+    let sortOk = false;
+    if (rec1) {
+      const k0 = window.mtKey(rec0), k1 = window.mtKey(rec1);
+      localStorage.setItem('wb_match', JSON.stringify({ [k0]: { score: 40, at: '2026-09-15' }, [k1]: { score: 95, at: '2026-09-15' } }));
+      window.mtRefreshRows();
+      const fso = document.getElementById('at_fSort') || document.getElementById('fSort');
+      if (fso) { fso.value = 'match'; fso.dispatchEvent(new Event('change')); }
+      await sleep(60);
+      const first = window.mtCardAt(0);
+      const txt = (first && first.querySelector('.jmatchrow')) ? first.querySelector('.jmatchrow').textContent : '';
+      sortOk = !!first && first.__mtRec === rec1 && txt.indexOf('95 分') >= 0;
+    } else { sortOk = true; }
+    // 还原
+    if (sRes != null) localStorage.setItem('wb_resumes', sRes); else localStorage.removeItem('wb_resumes');
+    if (sJd != null) localStorage.setItem('wb_jd', sJd); else localStorage.removeItem('wb_jd');
+    if (sMt != null) localStorage.setItem('wb_match', sMt); else localStorage.removeItem('wb_match');
+    const fso2 = document.getElementById('at_fSort') || document.getElementById('fSort');
+    if (fso2) { fso2.value = ''; fso2.dispatchEvent(new Event('change')); }
+    window.mtRefreshRows();
+    return { noResumeHint, noWrite, jdOk, badge0, storedOk, sortOk, cards: !!card1 };
+  });
+  if (match.missing) {
+    console.log('匹配打分: 未找到岗位卡片/记录');
+    errors.push('match module missing');
+  } else {
+    console.log('匹配打分: 无简历提示=', match.noResumeHint, '| 未写结果=', match.noWrite, '| JD缓存=', match.jdOk, '| Mock徽章=', match.badge0, '| 结果落库=', match.storedOk, '| 按匹配度排序=', match.sortOk);
+    if (!match.noResumeHint || !match.noWrite || !match.jdOk || !match.badge0 || !match.storedOk || !match.sortOk) errors.push('match scoring broken');
+  }
+
   // 今日提醒 / 个人中心 子视图：两个方向各切一次并校验显示与高亮
   const subs = await page.evaluate(() => {
     const g = (id) => document.getElementById('ov_' + id) || document.getElementById(id);

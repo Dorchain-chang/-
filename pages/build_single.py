@@ -22,18 +22,21 @@ MODULES = ["overview", "autumn", "soe", "intern"]
 IDS = {
     "overview": ["todayCnt","todayMine","todayList","stWait","stDone","stDdl","stLive",
                  "tdW7","tdNode","tdIb","tdTotal",
+                 "aiProvider","aiBase","aiKey","aiModel","aiRemember","aiTest","aiClear","aiStatus",
+                 "rsCount","rsName","rsIntent","rsNote","rsFile","rsPaste","rsSave","rsList",
+                 "rpStatus","rpGen","rpClr","rpOut",
                  "cntAutumn","cntSOE","cntIntern","appCnt","appForm","fStage","funnelSvg",
                  "appCards","tplBox","tplApp"],
     "autumn":   ["jobCnt","jobForm","fBatch","fPrio","batchChips","q","fCity","fCareer",
-                 "fSt","fBatchF","filterHint","jobCards","tplBox","tplJob"],
-    "soe":      ["jobCnt","jobForm","fBatch","fPrio","q","fCity","fCareer","fSt",
+                 "fSt","fBatchF","fSort","filterHint","jobCards","tplBox","tplJob"],
+    "soe":      ["jobCnt","jobForm","fBatch","fPrio","q","fCity","fCareer","fSt","fSort",
                  "filterHint","jobCards","tplBox","tplJob"],
-    "intern":   ["jobCnt","internForm","q","fSt","filterHint","jobCards","tplBox","tplJob"],
+    "intern":   ["jobCnt","internForm","q","fSt","fSort","filterHint","jobCards","tplBox","tplJob"],
 }
 PREFIX = {"overview": "ov", "autumn": "at", "soe": "so", "intern": "ir"}
 
 # shared `state.<field>` fields that must be namespaced (used by multiple modules)
-STATE_FIELDS = ["fBatchF", "fSt", "fCity", "fCareer", "q"]
+STATE_FIELDS = ["fBatchF", "fSt", "fCity", "fCareer", "q", "fSort"]
 
 REFRESH_LINE = {
     "overview": "function refreshAll(){renderToday();renderTdStats();renderStats();renderModuleCounts();renderFunnel();renderInbox();renderApps();}",
@@ -45,7 +48,7 @@ REFRESH_LINE = {
 # hand-written per-module registration (bind/setup) replacing the old init()
 TAIL = {
 "overview": """
-MODS.push({refresh:function(){renderToday();renderTdStats();renderStats();renderModuleCounts();renderFunnel();renderInbox();renderApps();renderHeatmap();},setup:function(){fillStageOv();},bind:function(){
+MODS.push({refresh:function(){renderToday();renderTdStats();renderStats();renderModuleCounts();renderFunnel();renderInbox();renderApps();renderHeatmap();},setup:function(){fillStageOv();initAiSettings();initResumes();},bind:function(){
   bindSubmitApp();
   bindFormCache('ov_appForm');
   bindQuickIntel();
@@ -124,6 +127,7 @@ MODS.push({refresh:function(){renderFilterFacets();renderJobs();},setup:function
   $('at_fBatchF').addEventListener('change',function(){state.at_fBatchF=$('at_fBatchF').value;renderJobs()});
   $('at_fCity').addEventListener('change',function(){state.at_fCity=$('at_fCity').value;renderJobs()});
   $('at_fCareer').addEventListener('change',function(){state.at_fCareer=$('at_fCareer').value;renderJobs()});
+  $('at_fSort').addEventListener('change',function(){state.at_fSort=$('at_fSort').value;renderJobs()});
   Array.prototype.forEach.call(document.querySelectorAll('#at_batchChips .chip'),function(ch){
     ch.addEventListener('click',function(){state.batchMode=ch.getAttribute('data-mode');Array.prototype.forEach.call(document.querySelectorAll('#at_batchChips .chip'),function(x){x.className='chip'+(x===ch?' active':'')});renderJobs();});
   });
@@ -136,6 +140,7 @@ MODS.push({refresh:function(){renderFilterFacets();renderJobs();},setup:function
   $('so_fSt').addEventListener('change',function(){state.so_fSt=$('so_fSt').value;renderJobs()});
   $('so_fCity').addEventListener('change',function(){state.so_fCity=$('so_fCity').value;renderJobs()});
   $('so_fCareer').addEventListener('change',function(){state.so_fCareer=$('so_fCareer').value;renderJobs()});
+  $('so_fSort').addEventListener('change',function(){state.so_fSort=$('so_fSort').value;renderJobs()});
 }});
 """,
 "intern": """
@@ -144,6 +149,7 @@ MODS.push({refresh:function(){renderInterns();},setup:function(){renderSelectOpt
   bindFormCache('ir_internForm');
   $('ir_q').addEventListener('input',function(){state.ir_q=$('ir_q').value.trim();renderInterns()});
   $('ir_fSt').addEventListener('change',function(){state.ir_fSt=$('ir_fSt').value;renderInterns()});
+  $('ir_fSort').addEventListener('change',function(){state.ir_fSort=$('ir_fSort').value;renderInterns()});
 }});
 """,
 }

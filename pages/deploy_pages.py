@@ -20,7 +20,7 @@ PAGES = [
     ("JgXPaIiaDMGt2xH3vBftAo", SINGLE),
 ]
 
-MSG = "总览页移除顶部「求职总览台」大横幅，今日提醒/个人中心直接顶格呈现，页面更紧凑"
+MSG = "M2：岗位卡片「贴 JD 打分」（按岗位匹配度评分 + 亮点/缺口/建议，结果存本机）+ 列表支持按匹配度排序"
 
 
 def run_page_script(name, args, token):
