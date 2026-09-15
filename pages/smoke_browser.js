@@ -132,6 +132,8 @@ const MOCK = `
   const page = await browser.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
+  // 自动接受 confirm/alert：批量打分与标记已投都有确认框
+  page.on('dialog', (d) => d.accept());
   page.on('console', (m) => {
     if (m.type() === 'error') errors.push('console.error: ' + m.text());
     else if (process.env.DEBUG) console.log('PAGE>', m.text());
@@ -400,6 +402,96 @@ const MOCK = `
     console.log('匹配打分: 无简历提示=', match.noResumeHint, '| 未写结果=', match.noWrite, '| JD缓存=', match.jdOk, '| Mock徽章=', match.badge0, '| 结果落库=', match.storedOk, '| 按匹配度排序=', match.sortOk);
     if (!match.noResumeHint || !match.noWrite || !match.jdOk || !match.badge0 || !match.storedOk || !match.sortOk) errors.push('match scoring broken');
   }
+
+  // M3 面试复盘 / M4 批量打分 / M5 AI 推荐 / M6 邮件 AI 解析
+  const plus = await page.evaluate(async () => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const tabs = Array.from(document.querySelectorAll('nav.tabbar .tab'));
+    const tdTab = tabs.find((t) => t.textContent === '今日提醒');
+    if (tdTab) tdTab.click();
+    await sleep(80);
+    // M5：规则推荐（本地零成本） + AI 点评（Mock）
+    const box = document.querySelector('.recoBox');
+    const recN = box ? box.querySelectorAll('.rcitem').length : -1;
+    const recCnt = (document.querySelector('.rcCnt') || {}).textContent || '';
+    let whyN = 0, recoCache = '';
+    const aiBtn = document.querySelector('.rcai');
+    if (aiBtn) {
+      aiBtn.click();
+      await sleep(120);
+      whyN = document.querySelectorAll('.recoBox .rcwhy').length;
+      recoCache = localStorage.getItem('wb_reco') || '';
+    }
+    // M3：AI 复盘（Mock）
+    let rvOpenOk = false, rvOutOk = false, rvStore = '', rvCard = '';
+    const rvBtn = document.querySelector('.acard .arv');
+    if (rvBtn) {
+      rvBtn.click();
+      await sleep(60);
+      const mask = document.getElementById('rvMask');
+      rvOpenOk = !!mask && mask.className.indexOf('open') >= 0;
+      const ta = document.getElementById('rvText');
+      if (ta) ta.value = '一面 45 分钟，问了 KG-RAG 检索链路与显存优化，显存题没答好';
+      const go = document.getElementById('rvGo');
+      if (go) go.click();
+      await sleep(150);
+      const out = document.getElementById('rvOut');
+      rvOutOk = !!out && out.textContent.indexOf('下一轮准备清单') >= 0;
+      rvStore = localStorage.getItem('wb_review') || '';
+      rvCard = (document.querySelector('.acard [data-field="复盘笔记"]') || {}).textContent || '';
+      const cl = document.getElementById('rvClose');
+      if (cl) cl.click();
+    }
+    // M6：收件箱 AI 解析（Mock）+ 解析出的环节成为「写入投递跟踪」默认阶段
+    let ibOut = '', ibStage = '';
+    const ibBtn = document.querySelector('.ibai');
+    if (ibBtn) {
+      ibBtn.click();
+      await sleep(150);
+      const card = ibBtn.closest('.acard');
+      const o = card.querySelector('.ibaiout');
+      ibOut = o && o.style.display !== 'none' ? o.textContent : '';
+      card.querySelector('.ibok').click();
+      await sleep(60);
+      const sel = card.querySelector('.ibpick select');
+      ibStage = sel ? sel.value : '';
+    }
+    // M4：批量打分（切到秋招页，塞简历 + 给一张卡贴 JD）
+    const at = tabs.find((t) => t.getAttribute('data-view') === 'autumn');
+    if (at) at.click();
+    await sleep(80);
+    const oldR = localStorage.getItem('wb_resumes');
+    localStorage.setItem('wb_resumes', JSON.stringify([{ id: 'r-b', name: '批量测试', intent: 'AI 大模型实习', note: '', text: 'Python PyTorch RAG', parsed: null, at: '2026-09-15' }]));
+    const c0 = window.mtCardAt(0);
+    if (c0 && c0.__mtRec) window.mtJdSet(c0.__mtRec, '任职要求：Python、PyTorch、RAG 项目经验');
+    localStorage.removeItem('wb_match');
+    window.mtRefreshRows();
+    const pool0 = window.mtBatchPool ? window.mtBatchPool().length : -1;
+    const bb = document.querySelector('.mtbatch');
+    if (bb) bb.click();
+    await sleep(500);
+    const matchN = Object.keys(JSON.parse(localStorage.getItem('wb_match') || '{}')).length;
+    const btnTxt = bb ? bb.textContent : '';
+    // 还原
+    if (oldR != null) localStorage.setItem('wb_resumes', oldR); else localStorage.removeItem('wb_resumes');
+    localStorage.removeItem('wb_match');
+    localStorage.removeItem('wb_reco');
+    localStorage.removeItem('wb_review');
+    localStorage.removeItem('wb_ibai');
+    window.mtRefreshRows();
+    if (tdTab) tdTab.click();
+    return { recN, recCnt, whyN, recoCache, rvOpenOk, rvOutOk, rvStore, rvCard, ibOut, ibStage, pool0, matchN, btnTxt };
+  });
+  console.log('AI推荐: 条数=', plus.recN, '| 计数=', plus.recCnt, '| AI点评理由=', plus.whyN, '| 当日缓存=', plus.recoCache ? '有' : '无');
+  console.log('面试复盘: 弹窗=', plus.rvOpenOk, '| Mock含准备清单=', plus.rvOutOk, '| 存本机=', !!plus.rvStore, '| 卡片回填=', String(plus.rvCard).slice(0, 24));
+  console.log('邮件AI解析: 输出=', String(plus.ibOut).slice(0, 70), '| 确认默认阶段=', plus.ibStage);
+  console.log('批量打分: 候选池=', plus.pool0, '| 落库条数=', plus.matchN, '| 按钮复原=', plus.btnTxt);
+  if (plus.recN < 1) errors.push('reco list empty');
+  if (plus.whyN < 1) errors.push('reco ai reasons missing');
+  if (!plus.rvOpenOk || !plus.rvOutOk || !plus.rvStore) errors.push('review assistant broken');
+  if (String(plus.ibOut).indexOf('AI 解析') < 0) errors.push('inbox ai parse broken');
+  if (plus.ibStage !== '一面') errors.push('inbox ai stage not applied');
+  if (plus.matchN < 1) errors.push('batch scoring broken');
 
   // 今日提醒 / 个人中心 子视图：两个方向各切一次并校验显示与高亮
   const subs = await page.evaluate(() => {

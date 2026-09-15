@@ -20,7 +20,7 @@ PAGES = [
     ("JgXPaIiaDMGt2xH3vBftAo", SINGLE),
 ]
 
-MSG = "M2：岗位卡片「贴 JD 打分」（按岗位匹配度评分 + 亮点/缺口/建议，结果存本机）+ 列表支持按匹配度排序"
+MSG = "M3-M6：面试复盘助手（贴面经→复盘+准备清单，写入复盘笔记）· 批量匹配打分（限额可中断）· 今日提醒 AI 推荐（本地零成本排序 + 按需 AI 点评）· 收件箱邮件 AI 解析（环节/时间/形式/地点/待办）· 抓 JD 书签"
 
 
 def run_page_script(name, args, token):
