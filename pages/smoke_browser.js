@@ -345,6 +345,34 @@ const MOCK = `
     if (resume.cards < 2 || !resume.parsedOk || !resume.profileOk) errors.push('resume/profile broken');
   }
 
+  // Word（docx）简历上传：浏览器原生解包 zip → 提取正文
+  let docxOk = false;
+  const docxPath = path.join(__dirname, 'test_resume.docx');
+  if (fs.existsSync(docxPath)) {
+    const rsFile = (await page.$('#rsFile')) || (await page.$('#ov_rsFile'));
+    if (rsFile) {
+      await rsFile.setInputFiles(docxPath);
+      await page.waitForTimeout(600);
+      docxOk = await page.evaluate(() => {
+        const g = (id) => document.getElementById('ov_' + id) || document.getElementById(id);
+        const save = g('rsSave');
+        if (save) save.click();
+        const a = JSON.parse(localStorage.getItem('wb_resumes') || '[]');
+        const last = a[a.length - 1] || {};
+        const t = last.text || '';
+        return t.indexOf('KG-RAG') >= 0 && t.indexOf('PyTorch') >= 0 && t.indexOf('窦畅') >= 0;
+      });
+      // 清理冒烟数据
+      await page.evaluate(() => {
+        const a = JSON.parse(localStorage.getItem('wb_resumes') || '[]');
+        localStorage.setItem('wb_resumes', JSON.stringify(a.filter((r) => (r.text || '').indexOf('KG-RAG') < 0)));
+        if (window.rsRender) window.rsRender();
+      });
+    }
+  }
+  console.log('Word上传: docx解析并保存=', docxOk);
+  if (!docxOk) errors.push('docx upload broken');
+
   // M2 匹配打分：无简历提示 → Mock 打分出徽章 → 按匹配度排序
   const match = await page.evaluate(async () => {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

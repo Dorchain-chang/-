@@ -20,7 +20,7 @@ PAGES = [
     ("JgXPaIiaDMGt2xH3vBftAo", SINGLE),
 ]
 
-MSG = "M3-M6：面试复盘助手（贴面经→复盘+准备清单，写入复盘笔记）· 批量匹配打分（限额可中断）· 今日提醒 AI 推荐（本地零成本排序 + 按需 AI 点评）· 收件箱邮件 AI 解析（环节/时间/形式/地点/待办）· 抓 JD 书签"
+MSG = "简历档案支持直接上传 Word（.docx）：浏览器原生解包提取正文，零第三方依赖；txt/md/docx 一步到位"
 
 
 def run_page_script(name, args, token):

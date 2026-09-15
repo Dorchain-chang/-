@@ -427,7 +427,7 @@ nav.tabbar .tab{cursor:pointer;font-family:inherit}
 </section>
 <section>
   <h2><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/></svg>简历档案<span class="cnt" id="ov_rsCount" style="font-weight:500;font-size:12px"></span></h2>
-  <p style="margin:0 0 10px;font-size:12px;color:var(--sub)">支持多份简历，每份自己标注求职意向 · txt/md 可直接上传，PDF/Word 请复制文本后点「粘贴文本」· 简历内容只存本机浏览器，不上传服务器</p>
+  <p style="margin:0 0 10px;font-size:12px;color:var(--sub)">支持多份简历，每份自己标注求职意向 · txt/md/docx 可直接上传（Word 需较新浏览器），PDF 请复制文本后点「粘贴文本」· 简历内容只存本机浏览器，不上传服务器</p>
   <div class="formrow">
     <div><label class="fl">简历名称</label><input id="ov_rsName" placeholder="如：大模型算法版"></div>
     <div><label class="fl">求职意向</label><input id="ov_rsIntent" placeholder="如：AI 大模型工程师实习"></div>
@@ -1831,13 +1831,57 @@ function rsSetText(t,name){rsBuf=String(t||'');if(name){var n=$('ov_rsName');if(
 function rsReadFile(f){
   if(!f)return;
   var ext=(f.name.split('.').pop()||'').toLowerCase();
-  if(ext==='pdf'||ext==='doc'||ext==='docx'){alert('浏览器无法直接读取 '+ext.toUpperCase()+' 文件：请打开该文件，全选复制文本内容，然后点「粘贴文本」导入（txt / md 文件可直接上传）');return}
+  if(ext==='pdf'||ext==='doc'){alert('浏览器无法直接读取 '+ext.toUpperCase()+'：PDF 请全选复制文本后点「粘贴文本」；老式 .doc 可先另存为 .docx 再上传');return}
+  if(ext==='docx'){rsReadDocx(f);return}
   var r=new FileReader();
   r.onload=function(){rsSetText(r.result,f.name);if(!$('ov_rsName').value.trim())$('ov_rsName').value=f.name.replace(/\.[^.]+$/,'')};
   r.readAsText(f,'utf-8');
 }
+/* docx 本质是 zip 包：解析 zip 中央目录找到 word/document.xml，用浏览器原生 DecompressionStream 解压，再剥掉 XML 标签得到正文（零第三方依赖） */
+function rsInflate(buf){
+  var ds=new DecompressionStream('deflate-raw');
+  return new Response(new Blob([buf]).stream().pipeThrough(ds)).arrayBuffer()
+    .then(function(x){return new TextDecoder('utf-8').decode(x)});
+}
+function rsDocxXml(ab){
+  var u8=new Uint8Array(ab),n=u8.length,eocd=-1;
+  for(var i=n-22;i>=0;i--){if(u8[i]===0x50&&u8[i+1]===0x4b&&u8[i+2]===0x05&&u8[i+3]===0x06){eocd=i;break}}
+  if(eocd<0)return Promise.reject(new Error('不是有效的 docx（zip）文件'));
+  var cnt=u8[eocd+10]|(u8[eocd+11]<<8);
+  var p=u8[eocd+16]|(u8[eocd+17]<<8)|(u8[eocd+18]<<16)|(u8[eocd+19]<<24);
+  var hit=null;
+  for(var k=0;k<cnt&&p+46<=n;k++){
+    if(!(u8[p]===0x50&&u8[p+1]===0x4b&&u8[p+2]===0x01&&u8[p+3]===0x02))break;
+    var method=u8[p+10]|(u8[p+11]<<8);
+    var csize=u8[p+20]|(u8[p+21]<<8)|(u8[p+22]<<16)|(u8[p+23]<<24);
+    var nlen=u8[p+28]|(u8[p+29]<<8),elen=u8[p+30]|(u8[p+31]<<8),clen=u8[p+32]|(u8[p+33]<<8);
+    var lho=u8[p+42]|(u8[p+43]<<8)|(u8[p+44]<<16)|(u8[p+45]<<24);
+    var name='';for(var j=0;j<nlen;j++)name+=String.fromCharCode(u8[p+46+j]);
+    if(name==='word/document.xml'){hit={m:method,c:csize,lho:lho};break}
+    p+=46+nlen+elen+clen;
+  }
+  if(!hit)return Promise.reject(new Error('docx 里没找到正文'));
+  var lp=hit.lho,nl=u8[lp+26]|(u8[lp+27]<<8),el=u8[lp+28]|(u8[lp+29]<<8);
+  var start=lp+30+nl+el,raw=ab.slice(start,start+hit.c);
+  if(hit.m===0)return Promise.resolve(new TextDecoder('utf-8').decode(raw));
+  return rsInflate(raw);
+}
+function rsXml2Text(x){
+  return x.replace(/<w:tab[^>]*\/>/g,'\t').replace(/<\/w:p>/g,'\n').replace(/<[^>]+>/g,'')
+    .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'")
+    .replace(/&#(\d+);/g,function(m,d){return String.fromCharCode(+d)})
+    .replace(/&amp;/g,'&').split(String.fromCharCode(13)).join('').replace(/\n{3,}/g,'\n\n').trim();
+}
+function rsReadDocx(f){
+  if(typeof DecompressionStream==='undefined'){alert('当前浏览器版本较旧，不支持直接读取 Word；请复制文本后点「粘贴文本」导入');return}
+  f.arrayBuffer().then(function(ab){return rsDocxXml(ab)}).then(function(xml){
+    var t=rsXml2Text(xml||'');
+    if(!t||t.length<20)throw new Error('正文为空');
+    rsSetText(t,f.name);
+  }).catch(function(e){alert('读取 Word 失败（'+((e&&e.message)||'未知')+'）：请复制文本后点「粘贴文本」导入')});
+}
 function rsSaveResume(){
-  if(!rsBuf.trim()){alert('请先「上传文件」（txt/md）或「粘贴文本」录入简历内容');return}
+  if(!rsBuf.trim()){alert('请先「上传文件」（txt/md/docx）或「粘贴文本」录入简历内容');return}
   var a=rsLoad(),seq=a.length+1;
   var name=$('ov_rsName').value.trim()||('简历'+seq);
   a.push({id:'r'+Date.now(),name:name,intent:$('ov_rsIntent').value.trim(),note:$('ov_rsNote').value.trim(),
