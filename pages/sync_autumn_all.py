@@ -28,7 +28,7 @@ def fetch_nowcoder():
     def fetch_page(page):
         url = "https://www.nowcoder.com/np-api/u/school-schedule/list-card?_=%d" % int(time.time() * 1000)
         data = urllib.parse.urlencode(
-            {"query": "", "propertyId": "", "page": page, "pageSize": 20, "tab": "3"}
+            {"query": "", "propertyId": "", "page": page, "pageSize": 100, "tab": "3"}
         ).encode()
         req = urllib.request.Request(
             url,
@@ -36,7 +36,7 @@ def fetch_nowcoder():
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-                "Referer": "https://www.nowcoder.com/school/schedule",
+                "Referer": "https://www.nowcoder.com/jobs/school/schedule",
             },
         )
         with urllib.request.urlopen(req, timeout=20) as r:
@@ -117,25 +117,58 @@ def db_call(name, args, token, payload=None):
 
 
 def existing_companies(token):
-    names, cursor = set(), None
+    names, missing_id, cursor = set(), {}, None
     while True:
-        args = ["--database-id", DB_ID, "--page-size", "100", "--fields", '["公司"]', "--token-stdin"]
+        args = ["--database-id", DB_ID, "--page-size", "100", "--fields", '["公司","牛客ID"]', "--token-stdin"]
         if cursor:
             args += ["--start-cursor", cursor]
         q = db_call("query_database_record.py", args, token)
         if "error" in q:
             raise RuntimeError(json.dumps(q, ensure_ascii=False)[:200])
-        for rec in q.get("results") or []:
+        for rec in (q.get("results") or []):
+            rid = rec.get("record_id") or rec.get("id")
             v = rec.get("公司")
             if isinstance(v, dict):
                 v = v.get("text")
-            if v:
-                names.add(str(v).strip())
+            if not v:
+                continue
+            name = str(v).strip()
+            names.add(name)
+            nid = rec.get("牛客ID")
+            if isinstance(nid, dict):
+                nid = nid.get("text")
+            if rid and not nid:
+                missing_id[name] = rid
         if q.get("has_more") and q.get("next_cursor"):
             cursor = q["next_cursor"]
         else:
             break
-    return names
+    return names, missing_id
+
+
+def backfill_ids(token, missing_id, picked_map):
+    """对已存在但牛客ID为空的公司，用候选数据补写。"""
+    todo = [
+        {"record_id": missing_id[name], "牛客ID": {"text": str(cid)}}
+        for name, cid in picked_map.items()
+        if name in missing_id and cid
+    ]
+    if not todo:
+        return 0, []
+    ok, failed = 0, []
+    for i in range(0, len(todo), BATCH):
+        chunk = todo[i : i + BATCH]
+        payload = json.dumps({"database_id": DB_ID, "records": chunk}, ensure_ascii=False)
+        a = db_call("batch_update_database_records.py", ["--stdin", "--token-stdin"], token, payload)
+        if "error" in a:
+            failed += [c["牛客ID"]["text"] for c in chunk]
+            continue
+        for item in a.get("results") or []:
+            if item.get("success"):
+                ok += 1
+            else:
+                failed.append(chunk[item.get("index")]["牛客ID"]["text"])
+    return ok, failed
 
 
 def main():
@@ -144,10 +177,17 @@ def main():
         print("NO TOKEN")
         return
 
-    try:
-        rows, total_page = fetch_nowcoder()
-    except Exception as e:
-        print("FETCH FAIL:", str(e)[:200])
+    rows = None
+    last_err = None
+    for attempt in range(3):  # 首次 + 重试 2 次
+        try:
+            rows, total_page = fetch_nowcoder()
+            break
+        except Exception as e:
+            last_err = e
+            time.sleep(2)
+    else:
+        print("FETCH FAIL:", str(last_err)[:200])
         return
     print("nowcoder tab3 cards: %d (totalPage=%s)" % (len(rows), total_page))
 
@@ -172,11 +212,21 @@ def main():
     picked.sort(key=lambda x: x[0] if x[0] else far)
 
     try:
-        existing = existing_companies(token)
+        existing, missing_id = existing_companies(token)
     except Exception as e:
         print("QUERY FAIL:", str(e)[:200])
         return
-    print("existing companies: %d" % len(existing))
+    print("existing companies: %d (missing nowcoder id: %d)" % (len(existing), len(missing_id)))
+
+    # 候选公司名 -> companyId，用于补写
+    picked_map = {}
+    for _, rec in picked:
+        nid = rec.get("牛客ID")
+        if nid:
+            picked_map[rec["公司"]["text"]] = nid["text"]
+
+    backfilled, backfill_failed = backfill_ids(token, missing_id, picked_map)
+    print("BACKFILL OK: %d%s" % (backfilled, (" failed: " + "、".join(backfill_failed)) if backfill_failed else ""))
 
     todo = [rec for _, rec in picked if rec["公司"]["text"] not in existing][:MAX_NEW]
     print("to add: %d" % len(todo))
