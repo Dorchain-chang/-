@@ -309,6 +309,53 @@ const MOCK = `
     if (!ai.filled || !ai.isMock) errors.push('ai settings broken');
   }
 
+  // Agent 调参台：载入默认 → 改参保存 → 读取生效 → 恢复默认 → A/B 对比 → trace
+  const tune = await page.evaluate(async () => {
+    const g = (id) => document.getElementById('ov_' + id) || document.getElementById(id);
+    const sel = g('agFnSel'), t = g('agT'), mt = g('agMt'), sys = g('agSys');
+    if (!sel || !t || !mt || !sys) return { missing: true };
+    const emptyTune = () => { localStorage.removeItem('wb_agent_tune'); localStorage.removeItem('wb_ai_trace'); if (window.agPanelLoad) window.agPanelLoad(); };
+    emptyTune();
+    sel.value = 'parse'; sel.dispatchEvent(new Event('change'));
+    const defT = window.agTune('parse');
+    const loadedDefault = Math.abs(defT.t - 0.2) < 1e-6 && defT.mt === 2000 && sys.value.length > 10;
+    // 改成 0.9 / 3000 并保存
+    t.value = '0.9'; t.dispatchEvent(new Event('input'));
+    mt.value = '3000';
+    const showVal = g('agTVal').textContent;
+    g('agSaveTune').click();
+    const after = window.agTune('parse');
+    const savedOk = Math.abs(after.t - 0.9) < 1e-6 && after.mt === 3000;
+    const statusCustom = (g('agStatus') || {}).textContent || '';
+    // 恢复默认
+    g('agResetTune').click();
+    const reset = window.agTune('parse');
+    const resetOk = Math.abs(reset.t - 0.2) < 1e-6 && reset.mt === 2000;
+    // A/B 对比（Mock 模式下两侧都出演示输出）
+    g('agAB').click();
+    const abIn = g('agAbIn');
+    abIn.value = '测试输入：Python PyTorch RAG 项目经历';
+    g('agAB').click();
+    if (window.agABRun) window.agABRun();
+    await new Promise((r) => setTimeout(r, 400));
+    const L = (g('agAbL') || {}).textContent || '';
+    const R = (g('agAbR') || {}).textContent || '';
+    const abOk = L.indexOf('当前参数') >= 0 && R.indexOf('默认参数') >= 0 && L.length > 20 && R.length > 20;
+    const trace = (g('agTrace') || {}).textContent || '';
+    const traceOk = trace.indexOf('t=') >= 0;
+    // 其他功能默认值抽查
+    const defsOk = ['match', 'review', 'profile', 'inbox', 'reco'].every((k) => window.agTune(k).t > 0);
+    emptyTune();
+    return { loadedDefault, savedOk, statusCustom, resetOk, abOk, traceOk, defsOk, showVal };
+  });
+  if (tune.missing) {
+    console.log('调参台: 未找到面板');
+    errors.push('agent tune panel missing');
+  } else {
+    console.log('调参台: 载默认=', tune.loadedDefault, '| 滑块显示=', tune.showVal, '| 改参生效=', tune.savedOk, '| 状态=', tune.statusCustom, '| 恢复默认=', tune.resetOk, '| A/B=', tune.abOk, '| 调用记录=', tune.traceOk, '| 六功能默认齐=', tune.defsOk);
+    if (!tune.loadedDefault || !tune.savedOk || !tune.resetOk || !tune.abOk || !tune.traceOk || !tune.defsOk) errors.push('agent tune broken');
+  }
+
   // 简历档案（多份 + 意向 + Mock 解析）与投递画像（Mock 生成）
   const resume = await page.evaluate(() => {
     const g = (id) => document.getElementById('ov_' + id) || document.getElementById(id);

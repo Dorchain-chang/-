@@ -23,6 +23,8 @@ IDS = {
     "overview": ["todayCnt","todayMine","todayList","stWait","stDone","stDdl","stLive",
                  "tdW7","tdNode","tdIb","tdTotal",
                  "aiProvider","aiBase","aiKey","aiModel","aiRemember","aiTest","aiClear","aiStatus",
+                 "agStatus","agFnSel","agMt","agT","agTVal","agSys","agSaveTune","agResetTune","agAB",
+                 "agAbBox","agAbIn","agAbL","agAbR","agTraceCnt","agTrace","agTip",
                  "rsCount","rsName","rsIntent","rsNote","rsFile","rsPaste","rsSave","rsList",
                  "rpStatus","rpGen","rpClr","rpOut",
                  "cntAutumn","cntSOE","cntIntern","appCnt","appForm","fStage","funnelSvg",
@@ -48,7 +50,7 @@ REFRESH_LINE = {
 # hand-written per-module registration (bind/setup) replacing the old init()
 TAIL = {
 "overview": """
-MODS.push({refresh:function(){renderToday();renderTdStats();renderStats();renderModuleCounts();renderFunnel();renderInbox();renderApps();renderHeatmap();},setup:function(){fillStageOv();initAiSettings();initResumes();},bind:function(){
+MODS.push({refresh:function(){renderToday();renderTdStats();renderStats();renderModuleCounts();renderFunnel();renderInbox();renderApps();renderHeatmap();},setup:function(){fillStageOv();initAiSettings();initAgPanel();initResumes();},bind:function(){
   bindSubmitApp();
   bindFormCache('ov_appForm');
   bindQuickIntel();

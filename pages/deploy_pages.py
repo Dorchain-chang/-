@@ -20,7 +20,7 @@ PAGES = [
     ("JgXPaIiaDMGt2xH3vBftAo", SINGLE),
 ]
 
-MSG = "简历档案支持直接上传 Word（.docx）：浏览器原生解包提取正文，零第三方依赖；txt/md/docx 一步到位"
+MSG = "Agent 调参台：六个 AI 功能的 temperature / max_tokens / System Prompt 可查看可调可恢复默认，支持 A/B 参数对比与最近调用记录（功能/温度/耗时/是否演示）"
 
 
 def run_page_script(name, args, token):

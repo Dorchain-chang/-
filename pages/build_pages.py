@@ -242,6 +242,18 @@ textarea{width:100%;min-height:64px;border:1px solid var(--line);border-radius:1
 input[type="date"]{height:40px;border:1px solid var(--line);border-radius:10px;padding:0 10px;font-size:14px;font-family:inherit;transition:border-color .15s,box-shadow .15s}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri);box-shadow:0 0 0 3px rgba(var(--pri-rgb),.13)}
 label.fl{display:block;margin:6px 0 0}
+/* ---------- Agent 调参台 ---------- */
+.agrow{display:flex;align-items:center;gap:10px;margin-top:4px}
+.agrow input[type="range"]{flex:1;min-height:0;height:6px;padding:0;border:none;background:var(--line);border-radius:6px;-webkit-appearance:none;appearance:none}
+.agrow input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--pri);cursor:pointer;box-shadow:0 2px 6px rgba(var(--pri-rgb),.35)}
+.agrow input[type="range"]::-moz-range-thumb{width:18px;height:18px;border:none;border-radius:50%;background:var(--pri);cursor:pointer}
+.agrow b{min-width:42px;text-align:right;font-size:13px;color:var(--pri)}
+.agab{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.agcol{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fbfbfe}
+.agcol b{font-size:12px;color:var(--sub);display:block;margin-bottom:6px}
+.agcol .jnote{margin:0;max-height:260px;overflow:auto;font-size:12.5px}
+#agTrace{max-height:220px;overflow:auto;font-size:12.5px}
+@media (max-width:720px){.agab{grid-template-columns:1fr}}
 .mtail{font-size:11px;color:var(--sub);text-align:center;margin-top:4px}
 .navSpacer{height:8px}
 /* ---------- 公司情报面板 ---------- */
@@ -549,14 +561,56 @@ function aiReady(){var c=aiCfg();return !!(c.key&&c.base&&c.model)}
 // 去掉 Base URL 结尾的斜杠（不用正则，见 check_escapes.py）
 function aiBase(){var b=aiCfg().base;while(b.length&&b.charCodeAt(b.length-1)===47)b=b.slice(0,-1);return b}
 function aiMockReply(){return '【演示数据 · Mock 模式】未配置 API Key，当前为演示输出；在「AI 设置」里填入自己的 Key 后，这里将返回真实 AI 结果。'}
+/* ---------- Agent 调参台：参数分层（连接层 aiCfg / 生成层 AGENT_FNS+用户覆盖 / 功能层调用点） ---------- */
+var AGENT_FNS={
+  parse:{label:'简历解析',t:0.2,mt:2000,tip:'结构化抽取，要稳定复现，建议 0.1-0.2'},
+  match:{label:'岗位匹配打分',t:0.2,mt:1200,tip:'打分要可复现可比较，建议 <=0.2'},
+  review:{label:'面试复盘',t:0.4,mt:1500,tip:'需要表达力与洞察，建议 0.4-0.5'},
+  profile:{label:'投递画像',t:0.5,mt:2000,tip:'策略建议类，建议 0.4-0.6'},
+  inbox:{label:'邮件解析',t:0.2,mt:700,tip:'字段抽取，建议 <=0.2'},
+  reco:{label:'推荐点评',t:0.4,mt:900,tip:'理由生成，建议 0.3-0.5'}
+};
+function agAllTune(){try{return JSON.parse(localStorage.getItem('wb_agent_tune')||'{}')}catch(e){return{}}}
+function agDef(k){var d=AGENT_FNS[k]||{t:0.5,mt:1200};return {t:d.t,mt:d.mt,sys:''}}
+function agTune(k){
+  var d=agDef(k),u=agAllTune()[k];
+  var t=(u&&u.t!=null)?u.t:d.t,mt=(u&&u.mt!=null)?u.mt:d.mt,sys=(u&&u.sys)?u.sys:'';
+  return {t:Number(t),mt:Number(mt),sys:sys,lab:(AGENT_FNS[k]&&AGENT_FNS[k].label)||k,tip:(AGENT_FNS[k]&&AGENT_FNS[k].tip)||''};
+}
+function agSetTune(k,obj){
+  var m=agAllTune();m[k]=obj;
+  try{localStorage.setItem('wb_agent_tune',JSON.stringify(m));return true}
+  catch(e){alert('本机存储空间不足，参数未保存');return false}
+}
+function agResetTune(k){var m=agAllTune();delete m[k];try{localStorage.setItem('wb_agent_tune',JSON.stringify(m))}catch(e){}}
+function agTraces(){try{return JSON.parse(localStorage.getItem('wb_ai_trace')||'[]')}catch(e){return[]}}
+function agTrace(fn,o){
+  try{
+    var a=agTraces();
+    a.unshift({fn:fn||'-',t:o.t,mt:o.mt,ms:o.ms,mock:!!o.mock,chars:o.chars||0,at:new Date().toTimeString().slice(0,8)});
+    localStorage.setItem('wb_ai_trace',JSON.stringify(a.slice(0,12)));
+  }catch(e){}
+}
 function aiChat(messages,opts){
   opts=opts||{};
-  if(!aiReady())return Promise.resolve(aiMockReply());
+  var tune=opts.fn?agTune(opts.fn):null;
+  var t=(tune?tune.t:(opts.temperature!=null?opts.temperature:0.5));
+  var mt=(tune?tune.mt:opts.maxTokens);
+  var t0=Date.now();
+  if(!aiReady()){
+    agTrace(opts.fn,{t:t,mt:mt,ms:Date.now()-t0,mock:true,chars:0});
+    return Promise.resolve(aiMockReply());
+  }
   var c=aiCfg();
-  var body={model:c.model,messages:messages,temperature:opts.temperature!=null?opts.temperature:0.5};
-  if(opts.maxTokens)body.max_tokens=opts.maxTokens;
+  var body={model:c.model,messages:messages,temperature:t};
+  if(mt)body.max_tokens=mt;
   return fetch(aiBase()+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+c.key},body:JSON.stringify(body)})
-    .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error((j.error&&j.error.message)||('HTTP '+r.status));return j.choices&&j.choices[0]&&j.choices[0].message?j.choices[0].message.content:''})});
+    .then(function(r){return r.json().then(function(j){
+      if(!r.ok){agTrace(opts.fn,{t:t,mt:mt,ms:Date.now()-t0,mock:false,chars:0});throw new Error((j.error&&j.error.message)||('HTTP '+r.status))}
+      var txt=j.choices&&j.choices[0]&&j.choices[0].message?j.choices[0].message.content:'';
+      agTrace(opts.fn,{t:t,mt:mt,ms:Date.now()-t0,mock:false,chars:String(txt||'').length});
+      return txt;
+    })});
 }
 """
 
@@ -703,7 +757,7 @@ function mtScoreOne(j,btn,card,onDone){
   }
   if(btn){btn.disabled=true;btn.textContent='打分中…'}
   if(!aiReady()){mtStoreOne(j,mtMockScore(),rs);finish();return}
-  aiChat([{role:'system',content:mtSys()},{role:'user',content:mtUser(rs,j)}],{temperature:0.2,maxTokens:1200})
+  aiChat([{role:'system',content:mtSys()},{role:'user',content:mtUser(rs,j)}],{fn:'match'})
     .then(function(t){
       var s=String(t||''),a=s.indexOf('{'),b=s.lastIndexOf('}');
       if(a<0||b<=a)throw new Error('未识别到 JSON 输出');
@@ -853,7 +907,7 @@ function rvRun(a,ta,out,btn){
     if(btn){btn.disabled=false;btn.textContent='生成复盘'}
   }
   if(!aiReady()){done(rvMock());return}
-  aiChat([{role:'system',content:rvSys()},{role:'user',content:rvUser(a,txt)}],{temperature:0.4,maxTokens:1500})
+  aiChat([{role:'system',content:rvSys()},{role:'user',content:rvUser(a,txt)}],{fn:'review'})
     .then(function(t){var o=aiJson(t);['good','bad','prep','predict'].forEach(function(k){if(!Array.isArray(o[k]))o[k]=[]});done(o)})
     .catch(function(e){
       console.error('[ai] 面试复盘失败:'+((e&&e.message)||e));
@@ -1022,7 +1076,7 @@ function rcAi(btn){
    +(rs&&rs.parsed?('<简历要点>'+MT_NL+mtBrief(rs.parsed)+MT_NL+'</简历要点>'+MT_NL):'')
    +'<候选岗位>'+MT_NL+lines.join(MT_NL)+MT_NL+'</候选岗位>'+MT_NL
    +'为每个岗位写一句 30 字内的推荐理由（说明为什么适合或不适合，并点出投递优先级），只输出一个 JSON 对象，键是岗位序号字符串（"1"/"2"…），值是理由字符串，不要输出其他文字。';
-  aiChat([{role:'system',content:'你是求职策略顾问，理由要务实具体、不空话，不得编造候选人未提及的经历。'},{role:'user',content:p}],{temperature:0.4,maxTokens:900})
+  aiChat([{role:'system',content:'你是求职策略顾问，理由要务实具体、不空话，不得编造候选人未提及的经历。'},{role:'user',content:p}],{fn:'reco'})
     .then(function(t){
       var o=aiJson(t);
       for(var k=0;k<cand.length;k++){var v=o[String(k+1)];if(v)map[recKey(cand[k].j)]=String(v)}
@@ -1087,7 +1141,7 @@ function ibAi(r,btn,card){
     if(btn){btn.disabled=false;btn.textContent=o._mock?'AI 解析（演示）':'重新解析'}
   }
   if(!aiReady()){done(ibAiMock());return}
-  aiChat([{role:'system',content:ibAiSys()},{role:'user',content:ibAiUser(r)}],{temperature:0.2,maxTokens:700})
+  aiChat([{role:'system',content:ibAiSys()},{role:'user',content:ibAiUser(r)}],{fn:'inbox'})
     .then(function(t){var o=aiJson(t);['准备','待办'].forEach(function(k){if(!Array.isArray(o[k]))o[k]=[]});done(o)})
     .catch(function(e){
       console.error('[ai] 邮件解析失败:'+((e&&e.message)||e));
@@ -1303,6 +1357,33 @@ def page_overview(urls):
     <button type="button" class="btn btn-gray" id="aiClear">清除配置</button>
   </div>
   <p style="margin:10px 0 0;font-size:11px;color:var(--sub)">会发给模型的内容：简历文本、岗位描述、面试记录，仅你所用服务商可见；未配置 Key 时所有 AI 功能返回演示数据</p>
+</section>
+<section>
+  <h2><svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/></svg>Agent 调参台<span class="cnt" id="agStatus" style="font-weight:500;font-size:12px"></span></h2>
+  <p style="margin:0 0 10px;font-size:12px;color:var(--sub)">六个 AI 功能的采样温度、最大输出长度、System Prompt 都可查看与调整（存本机）· 改完可做 A/B 对比看差异 · 不调整则使用默认参数</p>
+  <div class="formrow">
+    <div><label class="fl">功能</label><select id="agFnSel"></select></div>
+    <div><label class="fl">最大输出 max_tokens</label><input id="agMt" type="number" min="64" max="8000" step="50" placeholder="如 1200"></div>
+  </div>
+  <label class="fl">采样温度 temperature（越低越稳定可复现，越高越有表达力）<span id="agTip" style="color:var(--sub);font-weight:400"></span></label>
+  <div class="agrow"><input id="agT" type="range" min="0" max="1" step="0.05"><b id="agTVal">0.2</b></div>
+  <label class="fl">System Prompt（可整段改写，决定该功能的角色与输出约束）</label>
+  <textarea id="agSys" rows="5" placeholder="该功能的系统提示词"></textarea>
+  <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+    <button type="button" class="btn btn-pri" id="agSaveTune">保存参数</button>
+    <button type="button" class="btn btn-gray" id="agResetTune">恢复默认</button>
+    <button type="button" class="btn btn-gray" id="agAB">A/B 对比</button>
+  </div>
+  <div id="agAbBox" hidden style="margin-top:10px">
+    <label class="fl">对比实验输入（同一段输入，分别用「当前参数」与「默认参数」各跑一次）</label>
+    <textarea id="agAbIn" rows="3" placeholder="粘贴一段简历片段 / JD / 面经作为测试输入"></textarea>
+    <div class="agab">
+      <div class="agcol"><b>当前参数</b><div class="jnote" id="agAbL" style="white-space:pre-wrap"></div></div>
+      <div class="agcol"><b>默认参数</b><div class="jnote" id="agAbR" style="white-space:pre-wrap"></div></div>
+    </div>
+  </div>
+  <label class="fl" style="margin-top:10px">最近调用记录<span class="cnt" id="agTraceCnt" style="font-weight:500;font-size:12px"></span></label>
+  <div class="jnote" id="agTrace" style="white-space:pre-wrap"></div>
 </section>
 <section>
   <h2><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/></svg>简历档案<span class="cnt" id="rsCount" style="font-weight:500;font-size:12px"></span></h2>
@@ -1649,6 +1730,86 @@ function initAiSettings(){
   $('aiTest').addEventListener('click',aiTestConn);
   $('aiClear').addEventListener('click',aiClearCfg);
 }
+/* ---------- Agent 调参台（参数可观测 / 可调 / 可对比） ---------- */
+function agFnKeys(){var a=[];for(var k in AGENT_FNS)a.push(k);return a}
+/* 各功能 System Prompt 现取（调参台展示用；用户覆盖优先） */
+function agSysOf(k){
+  var u=agAllTune()[k];if(u&&u.sys)return u.sys;
+  if(k==='parse')return '你是资深求职辅导顾问。从简历文本提取结构化信息，只输出一个 JSON 对象，不要输出任何其他文字。字段：姓名、最高学历、学校、技能、项目、亮点、短板。';
+  if(k==='match')return mtSys();
+  if(k==='review')return rvSys();
+  if(k==='inbox')return ibAiSys();
+  if(k==='profile')return '你是求职数据分析师，输出务实、具体、不复述数据，避免空话。';
+  if(k==='reco')return '你是求职策略顾问，理由要务实具体、不空话，不得编造候选人未提及的经历。';
+  return '';
+}
+function agCur(){return $('agFnSel')?$('agFnSel').value:'parse'}
+function agPanelLoad(){
+  var k=agCur(),t=agTune(k),d=agDef(k);
+  $('agT').value=t.t;$('agTVal').textContent=Number(t.t).toFixed(2);
+  $('agMt').value=t.mt;$('agSys').value=agSysOf(k);
+  var mod=(agAllTune()[k])?'已自定义':'默认参数';
+  if($('agStatus'))$('agStatus').textContent=mod;
+  if($('agTip'))$('agTip').textContent='（'+t.tip+'）';
+  agRenderTrace();
+}
+function agRenderTrace(){
+  var a=agTraces(),box=$('agTrace');if(!box)return;
+  if($('agTraceCnt'))$('agTraceCnt').textContent=a.length?'最近 '+a.length+' 条':'';
+  if(!a.length){box.textContent='暂无记录（调用任意 AI 功能后在此显示：功能 / 温度 / 耗时 / 是否演示模式）';return}
+  var out=[];
+  a.forEach(function(x){
+    var lab=(AGENT_FNS[x.fn]&&AGENT_FNS[x.fn].label)||x.fn;
+    out.push(x.at+'  '+lab+'  t='+Number(x.t).toFixed(2)+'  max='+x.mt+(x.mock?'  [演示]':'  '+x.ms+'ms')+(x.chars?'  '+x.chars+'字':''));
+  });
+  box.textContent=out.join(String.fromCharCode(10));
+}
+function agSave(){
+  var k=agCur(),t=Number($('agT').value),mt=Number($('agMt').value)||agDef(k).mt,sys=$('agSys').value;
+  if(!agSetTune(k,{t:t,mt:mt,sys:(sys===agSysOf(k)?'':sys)}))return;
+  agPanelLoad();
+}
+function agReset(){
+  agResetTune(agCur());agPanelLoad();
+}
+function agABRun(){
+  var k=agCur(),inp=trimStr($('agAbIn').value);
+  if(!inp){alert('请先在「对比实验输入」里粘贴一段测试输入');return}
+  var L=$('agAbL'),R=$('agAbR'),btn=$('agAB');
+  var sysTxt=trimStr($('agSys').value)||agSysOf(k);
+  var cur={t:Number($('agT').value),mt:Number($('agMt').value)||agDef(k).mt};
+  var def=agDef(k);
+  L.textContent='运行中…';R.textContent='运行中…';
+  if(btn){btn.disabled=true;btn.textContent='对比中…'}
+  var runOne=function(cfg,tag){
+    var body=[{role:'system',content:sysTxt},{role:'user',content:inp}];
+    var t0=Date.now();
+    return aiChat(body,{temperature:cfg.t,maxTokens:cfg.mt}).then(function(txt){
+      return tag+' 参数：t='+Number(cfg.t).toFixed(2)+' · max_tokens='+cfg.mt+' · 耗时 '+(Date.now()-t0)+'ms'+String.fromCharCode(10)+String.fromCharCode(10)+String(txt||'（空输出）');
+    });
+  };
+  Promise.all([runOne(cur,'【当前参数】'),runOne(def,'【默认参数】')])
+    .then(function(r){L.textContent=r[0];R.textContent=r[1]})
+    .catch(function(e){L.textContent='对比失败：'+((e&&e.message)||e);R.textContent='对比失败：'+((e&&e.message)||e)})
+    .then(function(){if(btn){btn.disabled=false;btn.textContent='A/B 对比'}agRenderTrace()});
+}
+function initAgPanel(){
+  var sel=$('agFnSel');if(!sel)return;
+  sel.innerHTML='';
+  agFnKeys().forEach(function(k){
+    var o=document.createElement('option');o.value=k;o.textContent=AGENT_FNS[k].label;sel.appendChild(o);
+  });
+  sel.addEventListener('change',agPanelLoad);
+  $('agT').addEventListener('input',function(){$('agTVal').textContent=Number(this.value).toFixed(2)});
+  $('agSaveTune').addEventListener('click',agSave);
+  $('agResetTune').addEventListener('click',agReset);
+  $('agAB').addEventListener('click',function(){
+    var b=$('agAbBox');b.hidden=!b.hidden;
+    if(!b.hidden){$('agAbIn').focus()}
+  });
+  agPanelLoad();
+}
+window.agTune=agTune;window.agPanelLoad=agPanelLoad;window.agABRun=agABRun;window.agRenderTrace=agRenderTrace;
 /* ---------- 简历档案（多份 · 本机存储 · AI 解析） ---------- */
 function rsLoad(){try{return JSON.parse(localStorage.getItem('wb_resumes')||'[]')}catch(e){return[]}}
 function rsStore(a){try{localStorage.setItem('wb_resumes',JSON.stringify(a))}catch(e){alert('本机存储空间不足，保存失败：请删除不需要的简历后重试')}}
@@ -1733,7 +1894,7 @@ function rsParse(id,btn){
     if(btn){btn.disabled=false;btn.textContent='AI 解析'}
     return;
   }
-  aiChat([{role:'system',content:'你是资深求职辅导顾问。从简历文本提取结构化信息，只输出一个 JSON 对象，不要输出任何其他文字。字段：姓名(字符串)、最高学历(字符串)、学校(字符串)、技能(字符串数组)、项目(对象数组，每项{"名称":"...","亮点":"一句话"})、亮点(字符串数组，3-5条面试可讲的优势)、短板(字符串数组，2-4条待补强)。'},{role:'user',content:rsPrompt(r).content}],{temperature:0.2,maxTokens:2000})
+  aiChat([{role:'system',content:'你是资深求职辅导顾问。从简历文本提取结构化信息，只输出一个 JSON 对象，不要输出任何其他文字。字段：姓名(字符串)、最高学历(字符串)、学校(字符串)、技能(字符串数组)、项目(对象数组，每项{"名称":"...","亮点":"一句话"})、亮点(字符串数组，3-5条面试可讲的优势)、短板(字符串数组，2-4条待补强)。'},{role:'user',content:rsPrompt(r).content}],{fn:'parse'})
     .then(function(t){
       var m=String(t||'').match(/\{[\s\S]*\}/);
       if(!m)throw new Error('未识别到 JSON 输出');
@@ -1817,7 +1978,7 @@ function rpGen(){
     if(btn){btn.disabled=false;btn.textContent='生成投递画像'}return;
   }
   if(st)st.textContent='';
-  aiChat([{role:'system',content:'你是求职数据分析师，输出务实、具体、不复述数据，避免空话。'},{role:'user',content:p}],{temperature:0.5,maxTokens:2000})
+  aiChat([{role:'system',content:'你是求职数据分析师，输出务实、具体、不复述数据，避免空话。'},{role:'user',content:p}],{fn:'profile'})
     .then(function(t){var s=String(t||'').trim();if(!s)throw new Error('空输出');rpStore(s);rpRender(s);if(st)st.textContent='生成于 '+new Date().toLocaleString()+' · 存本机'})
     .catch(function(e){console.error('[ai] 画像生成失败:'+((e&&e.message)||e));if(st)st.textContent='生成失败：'+String((e&&e.message)||'网络错误')})
     .then(function(){if(btn){btn.disabled=false;btn.textContent='生成投递画像'}});
@@ -1867,6 +2028,7 @@ function init(){
   bindIntelClose();
   bindExpress();
   initAiSettings();
+  initAgPanel();
   initResumes();
   if(!db){goOffline();return}
   setSync('ok');
