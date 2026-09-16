@@ -20,7 +20,7 @@ PAGES = [
     ("JgXPaIiaDMGt2xH3vBftAo", SINGLE),
 ]
 
-MSG = "Agent 调参台：六个 AI 功能的 temperature / max_tokens / System Prompt 可查看可调可恢复默认，支持 A/B 参数对比与最近调用记录（功能/温度/耗时/是否演示）"
+MSG = "数据洞察：岗位库纯本地关键词挖掘——词典匹配技能词 Top 榜（含覆盖率）、2-gram × TF-IDF 词表外发现、城市 Top10 与城市×方向交叉分析，零 AI 消耗"
 
 
 def run_page_script(name, args, token):

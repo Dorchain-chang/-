@@ -176,6 +176,14 @@ section>h2 .cnt{margin-left:auto;font-size:12px;color:var(--sub);font-weight:500
 .schip{min-height:30px;padding:0 13px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--sub);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
 .schip:hover{border-color:#c3cbe0;color:var(--txt)}
 .schip.cur{background:var(--grad);color:#fff;border-color:transparent}
+/* ---- 数据洞察：纯 CSS 条形榜 ---- */
+.dmg .dmsec{font-weight:700;color:var(--txt);margin:13px 0 5px;font-size:13px}
+.dmg .dmrow{display:flex;align-items:center;gap:8px;margin:3px 0}
+.dmg .dmlabel{flex:0 0 104px;font-size:12px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
+.dmg .dmtrack{flex:1;height:13px;border-radius:7px;background:#eef1f7;overflow:hidden}
+.dmg .dmfill{height:100%;border-radius:7px;background:var(--grad);min-width:3px}
+.dmg .dmval{flex:0 0 auto;font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums}
+.dmg .dmfoot{margin-top:14px;font-size:11px;color:var(--sub);border-top:1px solid var(--line);padding-top:9px;line-height:1.7}
 /* ---------- 按钮 ---------- */
 .btn{appearance:none;border:0;cursor:pointer;padding:0 14px;height:36px;border-radius:10px;font-size:13px;font-weight:600;background:var(--card);color:var(--txt);font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:36px;transition:transform .08s,box-shadow .15s,filter .15s,background .15s}
 .btn:active{transform:translateY(1px)}
@@ -334,6 +342,7 @@ label.fl{display:block;margin:6px 0 0}
     <select id="fBatchF"><option value="">全部批次</option></select>
     <select id="fSort"><option value="">按截止时间</option><option value="match">按匹配度</option></select>
     <button type="button" class="btn btn-gray btn-sm mtbatch">批量打分</button>
+    <button type="button" class="btn btn-gray btn-sm dmbtn">数据洞察</button>
   </div>
   <div class="jmeta" id="filterHint" style="margin-bottom:8px"></div>
   <div class="cards" id="jobCards"><div class="empty">加载中…</div></div>
@@ -1254,6 +1263,99 @@ document.addEventListener('click',function(e){
   var k=t.closest('.rcmk');if(k){if(k.__rcRec)rcMark(k.__rcRec,k);return}
   var jb=t.closest('.jdbook');if(jb){jdBookmarkHelp(jb);return}
 });
+
+
+/* ---------- 数据洞察：关键词挖掘（纯本地，不调用 AI） ---------- */
+var DM_LEXICON=['Python','C++','Java','Go','Rust','SQL','PyTorch','TensorFlow','MindSpore','机器学习','深度学习','强化学习','迁移学习','大模型','LLM','多模态','AIGC','NLP','自然语言处理','CV','计算机视觉','RAG','知识图谱','LangChain','Agent','智能体','微调','LoRA','SFT','RLHF','提示词','Prompt','向量','Embedding','检索增强','vLLM','推理部署','模型部署','模型压缩','量化','蒸馏','Transformer','BERT','GPT','Diffusion','扩散模型','目标检测','图像分割','OCR','语音识别','数字人','自动驾驶','具身智能','SLAM','图神经网络','GNN','推荐系统','搜索算法','风控算法','数据挖掘','数据分析','数据仓库','数仓','ETL','数据治理','数据标注','数据运营','商业分析','Hive','Spark','Hadoop','Flink','ClickHouse','HBase','Kafka','MySQL','Redis','MongoDB','Neo4j','Elasticsearch','Linux','Docker','Kubernetes','K8s','Git','算法','后端开发','前端开发','全栈','客户端','测试开发','自动化测试','爬虫','运维','网络安全','RPA','办公自动化','低代码','产品经理','项目管理','用户增长','商业化','竞赛','顶会','论文','专利','实习经验','项目经验','英语','CET6'];
+var DM_STOP2={'职责':1,'内容':1,'要求':1,'资格':1,'地点':1,'时间':1,'加分':1,'优先':1,'相关':1,'专业':1,'经验':1,'能力':1,'团队':1,'协作':1,'合作':1,'抗压':1,'思维':1,'执行':1,'学历':1,'应届':1,'不限':1,'本科':1,'硕士':1,'博士':1,'提供':1,'负责':1,'积极':1,'主动':1,'认真':1,'沟通':1,'学习':1,'熟悉':1,'了解':1,'掌握':1,'具备':1,'良好':1,'优秀':1,'每周':1,'实习':1,'转正':1,'全职':1,'表现':1,'工作':1,'岗位':1,'任职':1,'描述':1,'以下':1,'以上':1,'一经':1,'福利':1,'待遇':1,'双休':1,'五险':1,'一金':1};
+var DM_STOPCH='的了在是和与及或为对于从上中下要会能可有做用等个之一不通不们你我他它这那也都很就还把被让使请须需内外年月日天周时员';
+function dmIsHan(c){var x=c.charCodeAt(0);return x>=0x4E00&&x<=0x9FFF}
+function dmSeg(s){return String(s||'').split(/[、,，/|;；·-]+/)}
+function dmCity(s){var seg=trimStr(dmSeg(s)[0]);if(seg.length>2&&seg.charAt(seg.length-1)==='市')seg=seg.slice(0,-1);if(seg.length>8)seg=seg.slice(0,8);return seg||'未标注'}
+function dmDir(j){var d=trimStr(dmSeg(fieldText(j,'岗位方向')||fieldText(j,'岗位名称'))[0]);if(d.length>14)d=d.slice(0,14);return d||'未分类'}
+function dmMine(recs){
+  var N=recs.length,i,L,lex={},big={},JDs=null;
+  try{JDs=mtAllJd()}catch(e){}
+  for(i=0;i<N;i++){
+    var j=recs[i],seenB={};
+    var txt=fieldText(j,'岗位方向')+' '+fieldText(j,'岗位名称')+' '+fieldText(j,'备注')+' '+fieldText(j,'岗位要求')+' '+fieldText(j,'批次');
+    try{var v=JDs&&JDs[mtKey(j)];if(v&&v.text)txt+=' '+v.text}catch(e2){}
+    for(L=0;L<DM_LEXICON.length;L++){
+      var t=DM_LEXICON[L],c=0,p=0;
+      while((p=txt.indexOf(t,p))>=0){c++;p+=t.length}
+      if(c){var e1=lex[t]||(lex[t]=[0,0]);e1[0]+=c;e1[1]++}
+    }
+    var clean=txt;
+    for(L=0;L<DM_LEXICON.length;L++){
+      var t2=DM_LEXICON[L],q;
+      while((q=clean.indexOf(t2))>=0){clean=clean.slice(0,q)+' '+clean.slice(q+t2.length)}
+    }
+    var run='';
+    for(var c2=0;c2<=clean.length;c2++){
+      if(c2<clean.length&&dmIsHan(clean.charAt(c2))){run+=clean.charAt(c2);continue}
+      for(var b=0;b+1<run.length;b++){
+        var bg=run.charAt(b)+run.charAt(b+1);
+        if(DM_STOP2[bg])continue;
+        if(DM_STOPCH.indexOf(bg.charAt(0))>=0||DM_STOPCH.indexOf(bg.charAt(1))>=0)continue;
+        var e3=big[bg]||(big[bg]=[0,0]);e3[0]++;if(!seenB[bg]){e3[1]++;seenB[bg]=1}
+      }
+      run='';
+    }
+  }
+  var lexArr=[];
+  for(var k in lex)lexArr.push({t:k,tf:lex[k][0],df:lex[k][1]});
+  lexArr.sort(function(a,b){return b.tf-a.tf||b.df-a.df});
+  var bgArr=[];
+  for(var k2 in big){var o=big[k2];bgArr.push({t:k2,tf:o[0],df:o[1],s:o[0]*Math.log(N/Math.max(1,o[1]))})}
+  bgArr=bgArr.filter(function(x){return x.tf>=3&&x.df>=2&&x.s>0.4}).sort(function(a,b){return b.s-a.s}).slice(0,8);
+  var cm={},xm={};
+  for(i=0;i<N;i++){
+    var ct=dmCity(fieldText(recs[i],'工作地点')),dr=dmDir(recs[i]);
+    cm[ct]=(cm[ct]||0)+1;
+    var xk=ct+' × '+dr;xm[xk]=(xm[xk]||0)+1;
+  }
+  function topMap(m2,n){var a=[];for(var k3 in m2)a.push([k3,m2[k3]]);a.sort(function(x,y){return y[1]-x[1]});return a.slice(0,n)}
+  return {n:N,lex:lexArr.slice(0,15),big:bgArr,cities:topMap(cm,10),cross:topMap(xm,10)};
+}
+function dmBarList(items,valFn){
+  var max=0,i;for(i=0;i<items.length;i++)if(items[i][1]>max)max=items[i][1];
+  var h='';
+  for(i=0;i<items.length;i++){
+    var it=items[i],w=max?Math.max(3,Math.round(it[1]/max*100)):3;
+    h+='<div class="dmrow"><span class="dmlabel" title="'+esc(it[0])+'">'+esc(it[0])+'</span><div class="dmtrack"><div class="dmfill" style="width:'+w+'%"></div></div><span class="dmval">'+valFn(it)+'</span></div>';
+  }
+  return h||'<div class="mthint">这一项暂无可统计的数据</div>';
+}
+function dmOpen(){
+  var jobs=state.jobs||[],its=state.interns||[];
+  var recs=jobs.length?jobs:its;
+  var kind=jobs.length?'秋招岗位':'实习岗位';
+  var m=aiMask('dmModal');
+  m.innerHTML='<div class="mtcard" style="max-width:680px"><h3>数据洞察 · 岗位关键词挖掘</h3>'
+   +'<div class="mthint">纯本地统计：词典匹配锚定技能词 + 2-gram 无词典发现（TF-IDF 压通用词权重），不调用 AI、不消耗 token</div>'
+   +'<div class="dmg" id="dmBody">计算中…</div>'
+   +'<div class="mtacts"><button type="button" class="btn btn-gray dmclose">关闭</button></div></div>';
+  m.className='mtmask open';
+  var body=document.getElementById('dmBody');
+  if(!recs.length){body.innerHTML='<div class="mthint">当前岗位库为空：等岗位数据加载完再点开看洞察。</div>';return}
+  var res=dmMine(recs),h='';
+  h+='<div class="dmsec">技能词 Top '+res.lex.length+'（共 '+res.n+' 条'+kind+'）</div>';
+  h+=dmBarList(res.lex.map(function(x){return [x.t,x.tf,x.df]}),function(it){return it[1]+'次 · 覆盖'+Math.round(it[2]/res.n*100)+'%'});
+  h+='<div class="dmsec">词表外高频词（2-gram × TF-IDF 发现）</div>';
+  h+=dmBarList(res.big.map(function(x){return [x.t,x.tf]}),function(it){return it[1]+'次'});
+  h+='<div class="dmsec">城市 Top '+res.cities.length+'</div>';
+  h+=dmBarList(res.cities,function(it){return it[1]+'条 · '+Math.round(it[1]/res.n*100)+'%'});
+  h+='<div class="dmsec">城市 × 方向 交叉 Top '+res.cross.length+'</div>';
+  h+=dmBarList(res.cross,function(it){return it[1]+'条'});
+  h+='<div class="dmfoot">口径：文本取「岗位方向 / 岗位名称 / 备注 / 岗位要求 / 批次 + 本机缓存的 JD 正文」；城市取工作地点第一段并去掉「市」后缀；覆盖率 = 含该词的岗位数 ÷ 总岗位数；2-gram 已剔除职责类停用词，按 tf×log(N/df) 降权通用词。</div>';
+  body.innerHTML=h;
+}
+document.addEventListener('click',function(e){
+  var t=e.target;if(!t||!t.closest)return;
+  if(t.closest('.dmbtn')){e.preventDefault();dmOpen();return}
+  if(t.closest('.dmclose')){aiMaskClose('dmModal');return}
+});
+window.dmOpen=dmOpen;window.dmMine=dmMine;
 
 var PAGE_URLS={overview:'https://www.workbuddy.cn/space/d/szZlSjyPnnpGwDW4OD4y0X',autumn:'https://www.workbuddy.cn/space/d/G9pPkUVWIc6Fk43Mnn1csc',soe:'https://www.workbuddy.cn/space/d/PQ5cLpifIyB1CaQB2OIMrm',intern:'https://www.workbuddy.cn/space/d/JgXPaIiaDMGt2xH3vBftAo'};
 function fetchJobs(){var out=[],cur=null;function once(){return db.query({databaseId:'GgZ71tywhs4HEZytFSqXTP',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=5000)return out;cur=nx;return once()})}return once()}

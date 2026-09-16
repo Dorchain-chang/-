@@ -356,6 +356,37 @@ const MOCK = `
     if (!tune.loadedDefault || !tune.savedOk || !tune.resetOk || !tune.abOk || !tune.traceOk || !tune.defsOk) errors.push('agent tune broken');
   }
 
+  // 数据洞察：dmMine 合成数据校验（词典/城市/交叉）+ .dmbtn 开弹窗（620 条 mock）
+  const dm = await page.evaluate(async () => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    if (!window.dmMine || !window.dmOpen) return { missing: true };
+    const rs = [
+      { 公司: 'A公司', 岗位方向: '大模型算法', 工作地点: '北京/上海', 备注: '熟悉Python、PyTorch，有RAG与知识图谱项目经验，熟悉大模型推理部署' },
+      { 公司: 'B公司', 岗位方向: '大模型算法', 工作地点: '北京', 备注: '熟悉Python，了解LangChain，有大模型微调经验' }
+    ];
+    const m = window.dmMine(rs);
+    const lexHas = m.lex.some((x) => x.t === 'Python' && x.df === 2);
+    const cityTop = !!m.cities[0] && m.cities[0][0] === '北京' && m.cities[0][1] === 2;
+    const crossOk = m.cross.some((x) => x[0] === '北京 × 大模型算法' && x[1] === 2);
+    document.querySelector('.dmbtn').click();
+    await sleep(60);
+    const mask = document.getElementById('dmModal');
+    const open = !!mask && mask.className.indexOf('open') >= 0;
+    const body = ((document.getElementById('dmBody') || {}).textContent) || '';
+    const bars = document.querySelectorAll('#dmBody .dmfill').length;
+    const secs = document.querySelectorAll('#dmBody .dmsec').length;
+    let closeOk = false;
+    if (mask) { const b = mask.querySelector('.dmclose'); if (b) b.click(); closeOk = document.getElementById('dmModal').className.indexOf('open') < 0; }
+    return { lexHas, cityTop, crossOk, open, sample: body.indexOf('共 620 条') >= 0, bars, secs, closeOk };
+  });
+  if (dm.missing) {
+    console.log('数据洞察: 未找到 dmMine/dmOpen');
+    errors.push('dm module missing');
+  } else {
+    console.log('数据洞察: 词典命中=', dm.lexHas, '| 城市Top=', dm.cityTop, '| 交叉=', dm.crossOk, '| 弹窗=', dm.open, '| 样本量=', dm.sample, '| 条形数=', dm.bars, '| 分区数=', dm.secs, '| 关闭=', dm.closeOk);
+    if (!dm.lexHas || !dm.cityTop || !dm.crossOk || !dm.open || !dm.sample || dm.bars < 5 || dm.secs < 4 || !dm.closeOk) errors.push('dm insight broken');
+  }
+
   // 简历档案（多份 + 意向 + Mock 解析）与投递画像（Mock 生成）
   const resume = await page.evaluate(() => {
     const g = (id) => document.getElementById('ov_' + id) || document.getElementById(id);
