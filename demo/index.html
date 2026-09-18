@@ -1266,7 +1266,7 @@ function mtNoResume(card){
   box.innerHTML='';
   box.appendChild(mtEl('span','mmeta','还没有简历档案：请先到'));
   var a=document.createElement('a');a.className='mgo';a.target='_top';
-  a.href=(typeof PAGE_URLS!=='undefined'&&PAGE_URLS&&PAGE_URLS.overview)?PAGE_URLS.overview:'#';
+  a.href='#';a.onclick=function(ev){ev.preventDefault();showView('overview');};
   a.textContent='总览台 → 个人中心 → 简历档案';
   box.appendChild(a);box.appendChild(mtEl('span','mmeta','上传简历后再来打分'));
 }
@@ -2123,7 +2123,7 @@ document.addEventListener('keydown',function(e){
 window.ragAsk=ragAsk;window.ragCorpus=ragCorpus;window.ragIndex=ragIndex;window.ragSearch=ragSearch;
 window.ragTok=ragTok;window.ragLocal=ragLocal;window.ragFmt=ragFmt;window.ragOpen=ragOpen;window.ragScopeOf=ragScopeOf;
 
-var PAGE_URLS={overview:'https://www.workbuddy.cn/space/d/szZlSjyPnnpGwDW4OD4y0X',autumn:'https://www.workbuddy.cn/space/d/G9pPkUVWIc6Fk43Mnn1csc',soe:'https://www.workbuddy.cn/space/d/PQ5cLpifIyB1CaQB2OIMrm',intern:'https://www.workbuddy.cn/space/d/JgXPaIiaDMGt2xH3vBftAo'};
+var PAGE_URLS={overview:'#',autumn:'#',soe:'#',intern:'#'};
 function fetchJobs(){var out=[],cur=null;function once(){return db.query({databaseId:'JOBS_ID_FAKE',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=5000)return out;cur=nx;return once()})}return once()}
 function fetchApps(){var out=[],cur=null;function once(){return db.query({databaseId:'APPS_ID_FAKE',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=3000)return out;cur=nx;return once()})}return once()}
 function fetchInterns(){var out=[],cur=null;function once(){return db.query({databaseId:'INTERN_ID_FAKE',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=3000)return out;cur=nx;return once()})}return once()}

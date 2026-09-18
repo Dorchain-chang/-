@@ -574,6 +574,39 @@ const MOCK = `
     if (!match.noResumeHint || !match.noWrite || !match.jdOk || !match.badge0 || !match.storedOk || !match.sortOk) errors.push('match scoring broken');
   }
 
+  // M2b 单页版自洽：不能残留生产资料库深链，无简历引导链接必须走页内切视图
+  //     （与 CI lint 的「demo 自包含」「合并版无跨节点跳转」两条断言同源，
+  //      历史上就是因为这里没有断言，链接漏进合并版 4 天没被发现）
+  const selfContained = await page.evaluate(async () => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const noProd = document.documentElement.outerHTML.indexOf('workbuddy.cn/space/d/') < 0;
+    const tabs = Array.from(document.querySelectorAll('nav.tabbar .tab'));
+    const at = tabs.find((t) => t.getAttribute('data-view') === 'autumn');
+    if (at) at.click();
+    await sleep(60);
+    const card0 = window.mtCardAt && window.mtCardAt(0);
+    if (!card0) return { noProd, missing: true };
+    const sRes = localStorage.getItem('wb_resumes');
+    localStorage.removeItem('wb_resumes');
+    card0.querySelector('.jmatch').click();
+    await sleep(30);
+    const row0 = card0.querySelector('.jmatchrow');
+    const g = row0 && row0.querySelector('.mgo');
+    const href = g ? (g.getAttribute('href') || '') : '';
+    const guideLocal = !!g && href.indexOf('workbuddy.cn') < 0;
+    const guideText = g ? g.textContent : '';
+    if (g) g.click();
+    await sleep(40);
+    const viewOk = !!document.querySelector('#view_overview.active');
+    if (at) at.click();
+    await sleep(40);
+    if (sRes != null) localStorage.setItem('wb_resumes', sRes); else localStorage.removeItem('wb_resumes');
+    window.mtRefreshRows();
+    return { noProd, guideLocal, guideText, viewOk, missing: false };
+  });
+  console.log('单页版自洽: 无生产深链=', selfContained.noProd, '| 引导链接页内=', selfContained.guideLocal, '| 引导文案=', selfContained.guideText, '| 点击切到总览台=', selfContained.viewOk);
+  if (!selfContained.noProd || !selfContained.guideLocal || !selfContained.viewOk) errors.push('single-page self-contained broken');
+
   // M3 面试复盘 / M4 批量打分 / M5 AI 推荐 / M6 邮件 AI 解析
   const plus = await page.evaluate(async () => {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

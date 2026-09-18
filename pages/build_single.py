@@ -330,6 +330,19 @@ function goOffline(){offline=true;setSync('off');$('offBanner').style.display='b
 """
     js_all = shared + "\n" + glue + "\n" + "\n".join(module_blocks) + "\n" + BOOT_JS + "\n})();"
 
+    # 单页版是自洽的：deploy_pages.py 把同一个文件推到全部 4 个节点，视图靠页内 showView
+    # 切换。所以合并版里不能残留任何指向生产资料库节点的深链 —— lint 的「demo 自包含」
+    # 与「合并版无跨节点跳转」两条断言就是拦这个的（demo 也由本文件派生）。
+    # build_pages.py 给每个独立页注入了 var PAGE_URLS={...}，独立页需要它做跨页跳转，
+    # 合并版里全部视图都在同一页，这里把它降级成页内空链接。
+    for _url in bp.URLS.values():
+        js_all = js_all.replace(_url, "#")
+    # 打分时「还没有简历档案：请先到总览台 → 个人中心 → 简历档案」的引导链接
+    # （mtNoResume 里动态创建的 a.mgo）在合并版里改成切视图，别跳走
+    js_all = js_all.replace(
+        "a.href=(typeof PAGE_URLS!=='undefined'&&PAGE_URLS&&PAGE_URLS.overview)?PAGE_URLS.overview:'#';",
+        "a.href='#';a.onclick=function(ev){ev.preventDefault();showView('overview');};")
+
     html = """<!DOCTYPE html>
 <!-- 本工作台通过 WorkBuddy 资料库能力（library skill）搭建、存储和部署 -->
 <html lang="zh-CN">
