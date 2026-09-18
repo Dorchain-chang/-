@@ -20,7 +20,7 @@ PAGES = [
     ("JgXPaIiaDMGt2xH3vBftAo", SINGLE),
 ]
 
-MSG = "数据洞察：岗位库纯本地关键词挖掘——词典匹配技能词 Top 榜（含覆盖率）、2-gram × TF-IDF 词表外发现、城市 Top10 与城市×方向交叉分析，零 AI 消耗"
+MSG = "知识库问答（本地 RAG）：把岗位（含贴过的 JD 正文）、投递记录与复盘、简历档案当语料，本机 BM25 检索挑片段 → 模型只依据片段作答并标注【序号】引用，点序号回看原文；检索无命中直接拒绝作答；检索与排序全在本机，未配 Key 时只跑检索不做生成"
 
 
 def run_page_script(name, args, token):

@@ -344,7 +344,7 @@ const MOCK = `
     const trace = (g('agTrace') || {}).textContent || '';
     const traceOk = trace.indexOf('t=') >= 0;
     // 其他功能默认值抽查
-    const defsOk = ['match', 'review', 'profile', 'inbox', 'reco'].every((k) => window.agTune(k).t > 0);
+    const defsOk = ['match', 'review', 'profile', 'inbox', 'reco', 'rag'].every((k) => window.agTune(k).t > 0);
     emptyTune();
     return { loadedDefault, savedOk, statusCustom, resetOk, abOk, traceOk, defsOk, showVal };
   });
@@ -352,7 +352,7 @@ const MOCK = `
     console.log('调参台: 未找到面板');
     errors.push('agent tune panel missing');
   } else {
-    console.log('调参台: 载默认=', tune.loadedDefault, '| 滑块显示=', tune.showVal, '| 改参生效=', tune.savedOk, '| 状态=', tune.statusCustom, '| 恢复默认=', tune.resetOk, '| A/B=', tune.abOk, '| 调用记录=', tune.traceOk, '| 六功能默认齐=', tune.defsOk);
+    console.log('调参台: 载默认=', tune.loadedDefault, '| 滑块显示=', tune.showVal, '| 改参生效=', tune.savedOk, '| 状态=', tune.statusCustom, '| 恢复默认=', tune.resetOk, '| A/B=', tune.abOk, '| 调用记录=', tune.traceOk, '| 七功能默认齐=', tune.defsOk);
     if (!tune.loadedDefault || !tune.savedOk || !tune.resetOk || !tune.abOk || !tune.traceOk || !tune.defsOk) errors.push('agent tune broken');
   }
 
@@ -385,6 +385,71 @@ const MOCK = `
   } else {
     console.log('数据洞察: 词典命中=', dm.lexHas, '| 城市Top=', dm.cityTop, '| 交叉=', dm.crossOk, '| 弹窗=', dm.open, '| 样本量=', dm.sample, '| 条形数=', dm.bars, '| 分区数=', dm.secs, '| 关闭=', dm.closeOk);
     if (!dm.lexHas || !dm.cityTop || !dm.crossOk || !dm.open || !dm.sample || dm.bars < 5 || dm.secs < 4 || !dm.closeOk) errors.push('dm insight broken');
+  }
+
+  // RAG 知识库问答：分词 / 语料来源 / BM25 命中与单调 / 无关问题拒绝作答 / 引用角标 / 弹窗
+  const rag = await page.evaluate(async () => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    if (!window.ragCorpus || !window.ragAsk || !window.ragSearch || !window.ragTok) return { missing: true };
+    const oldK = localStorage.getItem('wb_ai_key');
+    const oldR = localStorage.getItem('wb_resumes');
+    localStorage.removeItem('wb_ai_key');
+    localStorage.setItem('wb_resumes', JSON.stringify([{ id: 'r-rag', name: 'RAG测试简历', intent: 'AI 大模型实习', note: '', text: '基于 KG-RAG 的汽车故障智能诊断系统，混合检索 BGE-M3 + BM25 + reranker，Neo4j 知识图谱三元组覆盖 95%，推理准确率 89.7%', parsed: null, at: '2026-09-18' }]));
+    // 1) 中英混合分词：英文按词、中文按 2-gram
+    const tk = window.ragTok('熟悉Python与RAG检索增强');
+    const tokOk = tk.indexOf('python') >= 0 && tk.indexOf('检索') >= 0 && tk.indexOf('增强') >= 0;
+    // 2) 语料来源：岗位 / 实习 / 简历 都进库
+    const docs = window.ragCorpus();
+    const srcs = {};
+    docs.forEach((d) => { srcs[d.src] = (srcs[d.src] || 0) + 1; });
+    const srcOk = (srcs['岗位'] || 0) > 100 && (srcs['实习'] || 0) > 0 && (srcs['简历'] || 0) === 1;
+    // 3) BM25 命中：top1 必须真的含查询词，且分数单调不增
+    const idx = window.ragIndex(docs);
+    const hits = window.ragSearch(idx, 'RAG 知识图谱', 5);
+    const t1 = hits.length ? (docs[hits[0].i].title + ' ' + docs[hits[0].i].text).toLowerCase() : '';
+    const hitOk = hits.length > 0 && t1.indexOf('rag') >= 0 && t1.indexOf('知识') >= 0;
+    let mono = true;
+    for (let i = 1; i < hits.length; i++) if (hits[i].s > hits[i - 1].s + 1e-9) mono = false;
+    // 4) 无关问题：必须 0 命中（这是「拒绝作答」的前提）
+    const none = window.ragSearch(idx, 'zzzqqqxyzzy 甲乙丙丁戊己庚辛', 5).length;
+    // 5) 卡片：点示例 chip → 出检索片段 + 引用角标；无 Key 时只检索不生成
+    const sec = document.querySelector('.ragsec');
+    const chip = sec ? sec.querySelector('.ragchip') : null;
+    if (chip) chip.click();
+    await sleep(250);
+    const stat = sec ? sec.querySelector('.ragstat').textContent : '';
+    const out = sec ? sec.querySelector('.ragout').textContent : '';
+    const cites = sec ? sec.querySelectorAll('.ragsrc').length : 0;
+    const statOk = stat.indexOf('语料') >= 0 && stat.indexOf('本机') >= 0;
+    const outOk = out.indexOf('检索演示') >= 0;
+    // 6) 点引用角标 → 对应原文片段高亮
+    const cite = sec ? sec.querySelector('.ragcite') : null;
+    let citeOk = false;
+    if (cite) { cite.click(); citeOk = !!sec.querySelector('.ragsrc.hit'); }
+    // 7) 展开原文
+    const more = sec ? sec.querySelector('.ragmore') : null;
+    let moreOk = true;
+    if (more) { const before = more.textContent; more.click(); moreOk = more.textContent !== before; }
+    // 8) 岗位页「问资料库」→ 弹窗开 / 关
+    const rb = document.querySelector('.ragbtn');
+    let openOk = false, closeOk = false;
+    if (rb) {
+      rb.click();
+      await sleep(80);
+      const mask = document.getElementById('ragModal');
+      openOk = !!mask && mask.className.indexOf('open') >= 0 && !!mask.querySelector('.ragq');
+      if (mask) { const cb = mask.querySelector('.ragclose'); if (cb) cb.click(); closeOk = document.getElementById('ragModal').className.indexOf('open') < 0; }
+    }
+    if (oldK != null) localStorage.setItem('wb_ai_key', oldK);
+    if (oldR != null) localStorage.setItem('wb_resumes', oldR); else localStorage.removeItem('wb_resumes');
+    return { tokOk, srcOk, srcs: JSON.stringify(srcs), hitOk, mono, none, statOk, outOk, cites, citeOk, moreOk, openOk, closeOk, stat: stat.slice(0, 70), hasBtn: !!rb };
+  });
+  if (rag.missing) {
+    console.log('RAG 问答: 未找到 ragCorpus/ragAsk/ragTok');
+    errors.push('rag module missing');
+  } else {
+    console.log('RAG 问答: 分词=', rag.tokOk, '| 语料=', rag.srcs, '| 命中=', rag.hitOk, '| 分数单调=', rag.mono, '| 无关问题命中=', rag.none, '| 状态=', rag.statOk, '| 只检索不生成=', rag.outOk, '| 片段=', rag.cites, '| 引用高亮=', rag.citeOk, '| 展开原文=', rag.moreOk, '| 按钮=', rag.hasBtn, '| 弹窗=', rag.openOk, '| 关闭=', rag.closeOk);
+    if (!rag.tokOk || !rag.srcOk || !rag.hitOk || !rag.mono || rag.none !== 0 || !rag.statOk || !rag.outOk || rag.cites < 1 || !rag.citeOk || !rag.moreOk || !rag.openOk || !rag.closeOk) errors.push('rag qa broken');
   }
 
   // 简历档案（多份 + 意向 + Mock 解析）与投递画像（Mock 生成）
