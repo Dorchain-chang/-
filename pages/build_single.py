@@ -160,11 +160,21 @@ NAV_SINGLE = """
 <nav class="tabbar">
   <div class="inner">
     <a class="logo" data-goto="overview"><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>秋招求职台</a>
-    <button type="button" class="tab" data-view="today" data-sub="today">今日提醒</button>
-    <button type="button" class="tab" data-view="overview" data-sub="me">个人中心</button>
+    <div class="sngroup">发现</div>
     <button type="button" class="tab" data-view="autumn">秋招岗位</button>
     <button type="button" class="tab" data-view="soe">央国企</button>
     <button type="button" class="tab" data-view="intern">实习直通</button>
+    <div class="sngroup">我的</div>
+    <button type="button" class="tab" data-view="today" data-sub="today">今日提醒</button>
+    <button type="button" class="tab snsec" data-sec="apps">投递记录</button>
+    <button type="button" class="tab snsec" data-sec="sched">日程安排</button>
+    <button type="button" class="tab snsec" data-sec="agent">求职助理</button>
+    <button type="button" class="tab snsec" data-sec="rag">个人知识库</button>
+    <button type="button" class="tab snsec" data-sec="tasks">定时任务</button>
+    <button type="button" class="tab snsec" data-sec="mail">招聘邮箱</button>
+    <button type="button" class="tab" data-view="overview" data-sub="me">个人中心</button>
+    <div class="sngroup">配置</div>
+    <button type="button" class="tab snsec" data-sec="cfg">AI 配置</button>
     <div class="sync" id="syncBox"><span class="dot"></span><span id="syncTxt">连接中…</span></div>
   </div>
 </nav>
@@ -216,7 +226,16 @@ nav.tabbar .tab{cursor:pointer;font-family:inherit}
 """
 
 BOOT_JS = r"""
+var SEC_NAMES=['apps','sched','agent','rag','tasks','mail','cfg'];
 function showView(name){
+  if(SEC_NAMES.indexOf(name)>=0){
+    Array.prototype.forEach.call(document.querySelectorAll('.view'),function(v){v.className='view'+(v.id==='view_overview'?' active':'')});
+    Array.prototype.forEach.call(document.querySelectorAll('nav.tabbar .tab'),function(t){t.removeAttribute('aria-current')});
+    if(window.ovSec)window.ovSec(name);
+    try{history.replaceState(null,'','#'+name)}catch(e){}
+    window.scrollTo(0,0);
+    return;
+  }
   var vn=name==='today'?'overview':name;
   Array.prototype.forEach.call(document.querySelectorAll('.view'),function(v){v.className='view'+(v.id==='view_'+vn?' active':'')});
   Array.prototype.forEach.call(document.querySelectorAll('nav.tabbar .tab'),function(t){if(t.getAttribute('data-view')===name){t.setAttribute('aria-current','page')}else{t.removeAttribute('aria-current')}});
@@ -225,10 +244,10 @@ function showView(name){
   window.scrollTo(0,0);
 }
 function bindTabs(){
-  Array.prototype.forEach.call(document.querySelectorAll('nav.tabbar .tab'),function(t){t.addEventListener('click',function(){showView(t.getAttribute('data-view'))})});
+  Array.prototype.forEach.call(document.querySelectorAll('nav.tabbar .tab'),function(t){t.addEventListener('click',function(){var v=t.getAttribute('data-view');if(!v)return;/* .snsec（data-sec）由 NAVSEC_JS 的委托处理 */showView(v)})});
   Array.prototype.forEach.call(document.querySelectorAll('[data-goto]'),function(a){a.addEventListener('click',function(e){e.preventDefault();showView(a.getAttribute('data-goto'))})});
   var h=(location.hash||'').replace('#','');
-  showView(['overview','autumn','soe','intern','today'].indexOf(h)>=0?h:'today');
+  showView(['overview','autumn','soe','intern','today'].concat(SEC_NAMES).concat(['me']).indexOf(h)>=0?h:'today');
 }
 function boot(){
   db=window.__SMART_PAGE__&&window.__SMART_PAGE__.database;
@@ -352,7 +371,7 @@ function goOffline(){offline=true;setSync('off');$('offBanner').style.display='b
 <title>秋招求职台 · 一体化工作台</title>
 <style>{css}{css_extra}</style>
 </head>
-<body>
+<body class="navside">
 {nav}
 <div class="wrap">
 <div class="banner" id="offBanner">离线模式：未连接到在线数据表，数据读写暂不可用。请通过资料库链接打开本页面。<button type="button" class="btn btn-sm" id="offRetry" style="margin-left:10px;cursor:pointer">重试连接</button></div>

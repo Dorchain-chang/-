@@ -221,6 +221,8 @@ const MOCK = `
     const cards = box ? Array.from(box.querySelectorAll('.acard')) : [];
     return { cnt: cnt ? cnt.textContent : '', n: cards.length, companies: cards.map((c) => { const b = c.querySelector('[data-field="公司"]'); return b ? b.textContent : ''; }) };
   });
+  // 切到「招聘邮箱」视图（收件箱 section 现在归属我的空间，不再默认显示）
+  await page.evaluate(() => { const b = Array.from(document.querySelectorAll('.snsec')).find((x) => x.getAttribute('data-sec') === 'mail'); if (b) b.click(); });
   await page.click('#ibCards .acard .ibok, #ov_ibCards .acard .ibok');
   const pickVisible = await page.evaluate(() => { const p = document.querySelector('#ibCards .acard .ibpick, #ov_ibCards .acard .ibpick'); return !!p && p.style.display !== 'none'; });
   const defStage = await page.evaluate(() => { const p = document.querySelector('#ibCards .acard .ibpick select, #ov_ibCards .acard .ibpick select'); return p ? p.value : ''; });
@@ -700,7 +702,7 @@ const MOCK = `
   // 今日提醒 / 个人中心 子视图：两个方向各切一次并校验显示与高亮
   const subs = await page.evaluate(() => {
     const g = (id) => document.getElementById('ov_' + id) || document.getElementById(id);
-    const td = g('ovToday'), me = g('ovMe');
+    const td = g('ovToday'), me = g('ovMeHead');
     const vis = (e) => !!e && e.style.display !== 'none';
     const tabs = Array.from(document.querySelectorAll('nav.tabbar .tab'));
     const tdTab = tabs.find((t) => t.textContent === '今日提醒');
@@ -721,21 +723,76 @@ const MOCK = `
     if (!subs.onTd.td || subs.onTd.me || !subs.onTd.tdTabOn || !subs.onMe.me || subs.onMe.td || !subs.onMe.meTabOn) errors.push('overview split broken');
   }
 
-  // 导航布局切换（左侧竖排 ⇄ 顶部横排）
-  const layout = await page.evaluate(() => {
-    const b = document.getElementById('navtoggle');
-    if (!b) return { ok: false };
-    const start = document.body.classList.contains('navside');
-    b.click();
-    const flipped = document.body.classList.contains('navside');
-    const saved = localStorage.getItem('wb_layout');
-    b.click();
-    const back = document.body.classList.contains('navside');
-    localStorage.removeItem('wb_layout');
-    return { ok: true, start, flipped, saved, back };
+  // 我的空间：侧栏分组（发现/我的/配置）+ 新页面路由（投递记录/日程/助理/知识库/任务/邮箱/配置）
+  const myspace = await page.evaluate(() => {
+    const out = {};
+    const groups = Array.from(document.querySelectorAll('nav.tabbar .sngroup')).map((g) => g.textContent);
+    out.groups = groups.join(',');
+    out.snitems = document.querySelectorAll('nav.tabbar .tab').length;
+    const vis = (id) => { const e = document.getElementById('ov_' + id) || document.getElementById(id); return !!e && e.style.display !== 'none'; };
+    const click = (sec) => { const b = Array.from(document.querySelectorAll('.snsec')).find((x) => x.getAttribute('data-sec') === sec); if (b) b.click(); };
+    click('tasks');
+    out.tasksOpen = vis('secTasks');
+    const inp = document.getElementById('ov_taskTitle') || document.getElementById('taskTitle');
+    const dt = document.getElementById('ov_taskDate') || document.getElementById('taskDate');
+    if (inp && dt) {
+      inp.value = '冒烟测试任务';
+      const t = new Date();
+      dt.value = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+      const add = document.getElementById('ov_taskAdd') || document.getElementById('taskAdd');
+      add.click();
+      const list = document.getElementById('ov_taskList') || document.getElementById('taskList');
+      out.taskAdded = !!list && list.textContent.indexOf('冒烟测试任务') >= 0;
+      out.inToday = (document.getElementById('ov_todayList') || document.getElementById('todayList')).textContent.indexOf('冒烟测试任务') >= 0;
+    }
+    click('sched');
+    out.schedOpen = vis('secSched');
+    const sl = document.getElementById('schedList');
+    out.schedRows = sl ? sl.querySelectorAll('.schrow').length : -1;
+    click('agent');
+    out.agentOpen = vis('secAgent');
+    const chatIn = document.getElementById('ov_agChatIn') || document.getElementById('agChatIn');
+    if (chatIn) {
+      chatIn.value = '我该优先投哪些公司？';
+      const send = document.getElementById('ov_agChatSend') || document.getElementById('agChatSend');
+      send.click();
+    }
+    out.chatSent = !!chatIn;
+    click('rag');
+    out.ragOpen = vis('secRag');
+    out.ragSecIn = !!document.querySelector('#secRag .ragsec, #ov_secRag .ragsec');
+    click('mail');
+    out.mailOpen = vis('secMail') && vis('secIb');
+    out.ibRaw = !!(document.getElementById('ov_ibRaw') || document.getElementById('ibRaw'));
+    click('apps');
+    out.appsOpen = vis('secApps');
+    out.appCards = !!(document.getElementById('ov_appCards') || document.getElementById('appCards'));
+    click('cfg');
+    out.cfgOpen = vis('secAi') && vis('secAg');
+    out.agFnSel = !!(document.getElementById('ov_agFnSel') || document.getElementById('agFnSel'));
+    click('me') || true;
+    const meTab2 = Array.from(document.querySelectorAll('nav.tabbar .tab')).find((t) => t.textContent === '个人中心');
+    if (meTab2) meTab2.click();
+    out.meOpen = vis('ovMeHead') && vis('secRs');
+    // 还原到 today + 清理测试数据
+    const tdTab = Array.from(document.querySelectorAll('nav.tabbar .tab')).find((t) => t.textContent === '今日提醒');
+    if (tdTab) tdTab.click();
+    out.backToday = vis('ovToday');
+    localStorage.removeItem('wb_tasks');
+    localStorage.removeItem('wb_agent_chat');
+    if (window.renderToday) renderToday();
+    return out;
   });
-  console.log('布局切换: 按钮=', layout.ok, '| 初始侧栏=', layout.start, '| 点击后=', layout.flipped, '| 持久化=', layout.saved, '| 再点还原=', layout.back);
-  if (!layout.ok || layout.flipped === layout.start) errors.push('nav layout toggle broken');
+  console.log('我的空间: 分组=', myspace.groups, '| 侧栏项=', myspace.snitems, '| 任务页开=', myspace.tasksOpen, '| 加任务=', myspace.taskAdded, '| 浮出今日=', myspace.inToday, '| 日程开=', myspace.schedOpen, '| 日程行=', myspace.schedRows, '| 助理开=', myspace.agentOpen, '| 发消息=', myspace.chatSent, '| 知识库开=', myspace.ragOpen, '| RAG卡在内=', myspace.ragSecIn, '| 邮箱开=', myspace.mailOpen, '| 解析框=', myspace.ibRaw, '| 投递开=', myspace.appsOpen, '| 配置开=', myspace.cfgOpen, '| 调参台在=', myspace.agFnSel, '| 个人中心=', myspace.meOpen, '| 回今日=', myspace.backToday);
+  if ((myspace.groups || '').split(',').length < 3) errors.push('sidenav groups missing');
+  if (!myspace.tasksOpen || !myspace.taskAdded || !myspace.inToday) errors.push('tasks broken');
+  if (!myspace.schedOpen || myspace.schedRows < 1) errors.push('sched broken');
+  if (!myspace.agentOpen || !myspace.chatSent) errors.push('agent chat broken');
+  if (!myspace.ragOpen || !myspace.ragSecIn) errors.push('knowledge base broken');
+  if (!myspace.mailOpen || !myspace.ibRaw) errors.push('mail workbench broken');
+  if (!myspace.appsOpen || !myspace.appCards) errors.push('apps view broken');
+  if (!myspace.cfgOpen || !myspace.agFnSel) errors.push('cfg view broken');
+  if (!myspace.meOpen || !myspace.backToday) errors.push('me view broken');
   console.log('--- 实时订阅 ---');
   console.log('外部变更前 query:', beforeQueries, '→ 后:', afterQueries, '| 触发重拉:', afterQueries > beforeQueries, '| handler 实际执行次数:', fired);
   if (mem) console.log('JS 堆: 已用', mem.usedMB, 'MB / 总量', mem.totalMB, 'MB');
