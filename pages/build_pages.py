@@ -579,7 +579,10 @@ var AI_PRESETS={
   'deepseek':{base:'https://api.deepseek.com/v1',model:'deepseek-chat'},
   'kimi':{base:'https://api.moonshot.cn/v1',model:'moonshot-v1-8k'},
   'qwen':{base:'https://dashscope.aliyuncs.com/compatible-mode/v1',model:'qwen-plus'},
-  'glm':{base:'https://open.bigmodel.cn/api/paas/v4',model:'glm-4-flash'},
+  'glm':{base:'https://open.bigmodel.cn/api/paas/v4',model:'glm-4-flash',free:1,tip:'glm-4-flash 完全免费：open.bigmodel.cn 注册即得 Key'},
+  'siliconflow':{base:'https://api.siliconflow.cn/v1',model:'Qwen/Qwen2.5-7B-Instruct',free:1,tip:'硅基流动：cloud.siliconflow.cn 注册送额度，另有多个 0 元模型'},
+  'openrouter':{base:'https://openrouter.ai/api/v1',model:'deepseek/deepseek-chat-v3-0324:free',free:1,tip:'OpenRouter：openrouter.ai 注册即用，模型名带 :free 的免费'},
+  'groq':{base:'https://api.groq.com/openai/v1',model:'llama-3.3-70b-versatile',free:1,tip:'Groq：console.groq.com 注册即得免费 Key，速度快'},
   'custom':{base:'',model:''}
 };
 function aiStore(){return localStorage.getItem('wb_ai_remember')==='0'?sessionStorage:localStorage}
@@ -907,9 +910,10 @@ function rvModal(){
   if(!m.__built){
     m.__built=1;
     m.innerHTML='<div class="mtcard"><h3 id="rvTitle">面试复盘</h3>'
-     +'<div class="mthint">粘贴面试过程：问到的题、你的回答、卡壳的地方、感受 · 只存本机，生成时与简历一起发给模型</div>'
+     +'<div class="mthint">口述或粘贴面试过程：问到的题、你的回答、卡壳的地方、感受 · 语音由浏览器免费识别（Chrome/Edge） · 只存本机，生成时与简历一起发给模型</div>'
      +'<textarea id="rvText" placeholder="例：一面 45 分钟。先自我介绍，然后问 KG-RAG 的检索链路，BM25 和向量怎么融合……"></textarea>'
      +'<div class="rvrow"><button type="button" class="btn btn-pri" id="rvGo">生成复盘</button>'
+     +'<button type="button" class="btn btn-gray" id="rvMic">🎤 语音输入</button>'
      +'<button type="button" class="btn btn-gray" id="rvPersist">写入复盘笔记</button>'
      +'<button type="button" class="btn btn-ghost" id="rvCopy">复制结果</button>'
      +'<button type="button" class="btn btn-gray" id="rvClose">关闭</button></div>'
@@ -924,11 +928,29 @@ function rvOpen(a){
   out.textContent=saved.text||'';
   document.getElementById('rvTitle').textContent='面试复盘 · '+(fieldText(a,'公司')||'未命名')+' '+(plain(a['岗位'])||'');
   document.getElementById('rvGo').onclick=function(){rvRun(a,ta,out,this)};
+  document.getElementById('rvMic').onclick=function(){rvMic(ta,this)};
   document.getElementById('rvPersist').onclick=function(){rvNote(a,out,this,false)};
   document.getElementById('rvCopy').onclick=function(){aiCopyText(out.textContent,this)};
   document.getElementById('rvClose').onclick=function(){aiMaskClose('rvMask')};
   m.className='mtmask open';
   ta.focus();
+}
+/* 语音输入：浏览器自带语音识别（免费，不消耗 AI 额度），边说边追加到文本框 */
+function rvMic(ta,btn){
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){alert('当前浏览器不支持网页语音识别：请用 Chrome 或 Edge 打开本页（识别由浏览器免费提供，不消耗 AI 额度）');return}
+  if(btn.__rec){try{btn.__rec.stop()}catch(e0){}return}
+  var r=new SR();btn.__rec=r;
+  r.lang='zh-CN';r.continuous=true;r.interimResults=false;
+  r.onresult=function(ev){
+    var s='',i;
+    for(i=ev.resultIndex;i<ev.results.length;i++){if(ev.results[i].isFinal)s+=ev.results[i][0].transcript}
+    if(s)ta.value=trimStr(ta.value+(ta.value?MT_NL:'')+s);
+  };
+  r.onend=function(){btn.__rec=null;btn.textContent='🎤 语音输入'};
+  r.onerror=function(ev){btn.__rec=null;btn.textContent='🎤 语音输入';if(ev&&ev.error==='not-allowed')alert('麦克风权限被拒绝：请在浏览器地址栏允许麦克风后重试')};
+  btn.textContent='⏹ 正在听… 点击停止';
+  try{r.start()}catch(e0){btn.__rec=null;btn.textContent='🎤 语音输入';alert('语音识别启动失败，请重试')}
 }
 function rvRun(a,ta,out,btn){
   var txt=trimStr(ta.value);
@@ -1581,7 +1603,17 @@ document.addEventListener('keydown',function(e){
   ragAsk(t.value,ragScopeOf(t));
 });
 window.ragAsk=ragAsk;window.ragCorpus=ragCorpus;window.ragIndex=ragIndex;window.ragSearch=ragSearch;
-window.ragTok=ragTok;window.ragLocal=ragLocal;window.ragFmt=ragFmt;window.ragOpen=ragOpen;window.ragScopeOf=ragScopeOf;
+/* 语料概览：进「个人知识库」时刷新计数与状态行（修复空白观感） */
+function ragStatRefresh(){
+  var docs=ragCorpus(),cnt=ragCount(docs);
+  var e=document.querySelector('#secRag .ragcnt');
+  if(e)e.textContent='语料 '+docs.length+' 条';
+  var st=document.querySelector('#secRag .ragstat');
+  if(st)st.textContent=docs.length
+    ?('语料就绪：'+ragCountStr(cnt)+' · 输入问题开始检索，命中后模型只依据片段作答')
+    :'本机还没有可用语料：先在岗位页贴几份 JD、在「简历档案」存一份简历，或补一条投递记录';
+}
+window.ragTok=ragTok;window.ragLocal=ragLocal;window.ragFmt=ragFmt;window.ragOpen=ragOpen;window.ragScopeOf=ragScopeOf;window.ragStatRefresh=ragStatRefresh;
 """
 
 # 我的空间：侧栏分组路由（发现/我的/配置）+ 定时任务 + 日程安排 + 求职助理 + 邮件粘贴解析
@@ -1619,8 +1651,11 @@ function ovSec(name){
   if(name==='tasks')taskRender();
   if(name==='sched')schRender();
   if(name==='agent')agChatRestore();
+  if(name==='rag'&&window.ragStatRefresh)ragStatRefresh();
 }
 window.ovSec=ovSec;
+setInterval(remTick,60000);
+setTimeout(remTick,8000);
 document.addEventListener('click',function(e){
   var t=e.target;if(!t||!t.closest)return;
   var it=t.closest('.snsec');
@@ -1633,6 +1668,7 @@ document.addEventListener('click',function(e){
   }
   if(t.id==='agChatSend'){var i0=document.getElementById('agChatIn');agChatSend(i0?i0.value:'');return}
   if(t.id==='taskAdd'){taskAdd();return}
+  if(t.id==='remArm'){remArm(t);return}
   if(t.id==='ibRawBtn'){ibRawParse();return}
   if(t.id==='ibRawClr'){var ta=document.getElementById('ibRaw');if(ta)ta.value='';var tp=document.getElementById('ibRawTip');if(tp){tp.style.display='none';tp.textContent=''}return}
   var tk=t.closest('.taskdone');if(tk){taskMark(tk.getAttribute('data-id'),1);return}
@@ -1687,6 +1723,8 @@ function taskRender(){
   var a=taskAll(),cnt=document.getElementById('taskCnt');
   var open=0;a.forEach(function(k){if(!k.done)open++});
   if(cnt)cnt.textContent=a.length?('未完成 '+open):'';
+  var rb=document.getElementById('remArm');
+  if(rb)rb.textContent=(window.Notification&&Notification.permission==='granted')?'桌面提醒已开启（每分钟检查）':'开启桌面提醒';
   if(!a.length){box.innerHTML='<div class="empty">还没有任务。添加一条（如「9 月 25 日前投完字节网申」），到期会自动浮出在「今日提醒」</div>';return}
   var t=today();
   a.sort(function(x,y){return (x.done-y.done)||((x.due||'9999')<(y.due||'9999')?-1:1)});
@@ -1712,6 +1750,46 @@ function taskDueItems(){
   return out;
 }
 function renderTodayLocal(){if(window.renderToday)renderToday()}
+/* ---------- 到期提醒：页面打开期间每分钟扫描，浏览器系统通知（免费，零依赖） ---------- */
+function remSeen(){try{return JSON.parse(localStorage.getItem('wb_notify_seen')||'{}')}catch(e){return{}}}
+function remSave(m){try{localStorage.setItem('wb_notify_seen',JSON.stringify(m))}catch(e){}}
+function remCandidates(){
+  var out=[],t=today(),i;
+  taskDueItems().forEach(function(it){out.push({key:'task:'+it.task.id+':'+(it.task.due||''),title:'定时任务 · '+it.badge,body:it.title})});
+  state.apps.forEach(function(a){
+    var d=dOnly(a['下次节点']);if(!d)return;
+    var n=diffDays(t,d);if(n==null||n>1)return;
+    out.push({key:'app:'+recId(a)+':'+d,title:(n===0?'今天有节点':'明天有节点'),body:(plain(a['公司'])||'未命名公司')+' · '+d});
+  });
+  state.inbox.forEach(function(r){
+    var st=plain(r['状态']);
+    if(st&&st!=='待确认')return;
+    var d=dOnly(r['事项时间']);if(!d)return;
+    var n=diffDays(t,d);if(n==null||n>1)return;
+    out.push({key:'ib:'+recId(r)+':'+d,title:(n===0?'收件箱事项 · 今天':'收件箱事项 · 明天'),body:(plain(r['公司'])||'未识别公司')+' · '+d});
+  });
+  return out;
+}
+function remTick(){
+  if(!(window.Notification&&Notification.permission==='granted'))return;
+  var m=remSeen(),t=today(),fresh=[],i;
+  remCandidates().forEach(function(x){if(m[x.key]!==t)fresh.push(x)});
+  if(!fresh.length)return;
+  for(i=0;i<Math.min(fresh.length,3);i++){
+    try{new Notification(fresh[i].title,{body:fresh[i].body,tag:fresh[i].key})}catch(e0){}
+    m[fresh[i].key]=t;
+  }
+  remSave(m);
+}
+function remArm(btn){
+  if(!window.Notification){alert('当前浏览器不支持桌面通知：请用 Chrome 或 Edge 打开');return}
+  if(Notification.permission==='granted'){btn.textContent='桌面提醒已开启';remTick();return}
+  if(Notification.permission==='denied'){alert('通知权限已被拒绝：请在浏览器地址栏的站点设置里允许「通知」后重试');return}
+  Notification.requestPermission().then(function(p){
+    if(p==='granted'){btn.textContent='桌面提醒已开启';remTick()}
+    else{btn.textContent='未授权 · 点此重试'}
+  }).catch(function(){});
+}
 /* ---------- 日程安排：投递下次节点 + 收件箱事项时间 + 定时任务，按日期聚合 ---------- */
 function schRender(){
   var box=document.getElementById('schedList');if(!box)return;
@@ -1848,6 +1926,7 @@ function ibRawCard(r,o){
 window.taskAll=taskAll;window.taskAdd=taskAdd;window.taskRender=taskRender;window.taskMark=taskMark;
 window.taskDel=taskDel;window.taskPostpone=taskPostpone;window.taskDueItems=taskDueItems;
 window.schRender=schRender;window.agChatSend=agChatSend;window.agChatRestore=agChatRestore;window.ibRawParse=ibRawParse;
+window.rvMic=rvMic;window.remTick=remTick;window.remArm=remArm;window.remCandidates=remCandidates;
 """
 
 NAV_HTML = """
@@ -1923,25 +2002,6 @@ def page_overview(urls):
     )
     body = """
 <div id="ovToday">
-<div id="secRag" style="display:none">
-<section class="ragsec">
-  <h2><svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4-4"/><path d="M7.5 10.5h6M10.5 7.5v6"/></svg>知识库问答（本地 RAG）<span class="cnt ragcnt" style="font-weight:500;font-size:12px"></span></h2>
-  <p style="margin:0 0 10px;font-size:12px;color:var(--sub)">把本机资料当语料库：岗位（含贴过的 JD 正文）· 投递记录与复盘笔记 · 简历档案。BM25 检索挑出相关片段，再交给模型<b>只依据这些资料</b>作答并用【序号】标注出处，点序号可回看原文 · 检索与排序全在你本机完成，只把命中的片段发给模型 · 未配置 Key 时只跑检索、不做生成</p>
-  <div class="raginput">
-    <input class="ragq" placeholder="问一句，例如：哪些岗位要求 RAG / 知识图谱？">
-    <button type="button" class="btn btn-pri btn-sm ragask">检索并回答</button>
-  </div>
-  <div class="ragchips">
-    <button type="button" class="schip ragchip">哪些岗位要求 RAG / 知识图谱？</button>
-    <button type="button" class="schip ragchip">我投递过的哪些公司进面试了？</button>
-    <button type="button" class="schip ragchip">我的简历里有哪些大模型相关经历？</button>
-    <button type="button" class="schip ragchip">7 天内截止的大模型岗位有哪些？</button>
-  </div>
-  <div class="ragstat">还没提问：可以先补几份 JD 或存一份简历，语料越全检索越准。</div>
-  <div class="ragout" style="display:none"></div>
-  <div class="ragsrcs" style="display:none"></div>
-</section>
-</div>
 <section class="rcsec">
   <h2><svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M18 16l.9 2.1L21 19l-2.1.9L18 22l-.9-2.1L15 19l2.1-.9z"/></svg>AI 今日推荐<span class="cnt rcCnt"></span></h2>
   <p style="margin:0 0 10px;font-size:12px;color:var(--sub)">按「匹配分 + 截止紧迫度 + 意向吻合」排序 · 默认本地计算零 token，点「AI 点评」才调用模型逐条给理由（结果当天缓存，用你自己的 Key）</p>
@@ -1967,6 +2027,26 @@ def page_overview(urls):
     <div class="stat"><b id="tdIb">0</b><span>收件箱待确认</span></div>
     <div class="stat"><b id="tdTotal">0</b><span>累计投递</span></div>
   </div>
+</section>
+</div>
+
+<div id="secRag" style="display:none">
+<section class="ragsec">
+  <h2><svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4-4"/><path d="M7.5 10.5h6M10.5 7.5v6"/></svg>知识库问答（本地 RAG）<span class="cnt ragcnt" style="font-weight:500;font-size:12px"></span></h2>
+  <p style="margin:0 0 10px;font-size:12px;color:var(--sub)">把本机资料当语料库：岗位（含贴过的 JD 正文）· 投递记录与复盘笔记 · 简历档案。BM25 检索挑出相关片段，再交给模型<b>只依据这些资料</b>作答并用【序号】标注出处，点序号可回看原文 · 检索与排序全在你本机完成，只把命中的片段发给模型 · 未配置 Key 时只跑检索、不做生成</p>
+  <div class="raginput">
+    <input class="ragq" placeholder="问一句，例如：哪些岗位要求 RAG / 知识图谱？">
+    <button type="button" class="btn btn-pri btn-sm ragask">检索并回答</button>
+  </div>
+  <div class="ragchips">
+    <button type="button" class="schip ragchip">哪些岗位要求 RAG / 知识图谱？</button>
+    <button type="button" class="schip ragchip">我投递过的哪些公司进面试了？</button>
+    <button type="button" class="schip ragchip">我的简历里有哪些大模型相关经历？</button>
+    <button type="button" class="schip ragchip">7 天内截止的大模型岗位有哪些？</button>
+  </div>
+  <div class="ragstat">语料加载中…</div>
+  <div class="ragout" style="display:none"></div>
+  <div class="ragsrcs" style="display:none"></div>
 </section>
 </div>
 
@@ -2048,14 +2128,18 @@ def page_overview(urls):
   <p style="margin:0 0 10px;font-size:12px;color:var(--sub)">模型调用使用你自己的 API Key，只存在本机浏览器，不上传服务器 · 请勿在公用电脑保存</p>
   <div class="formrow">
     <div><label class="fl">服务商</label><select id="aiProvider">
+      <option value="glm">智谱 GLM · glm-4-flash 免费 ⭐</option>
+      <option value="siliconflow">硅基流动 · 注册送额度 ⭐</option>
+      <option value="openrouter">OpenRouter · :free 模型免费 ⭐</option>
+      <option value="groq">Groq · 免费额度 ⭐</option>
       <option value="deepseek">DeepSeek</option>
       <option value="kimi">Kimi (Moonshot)</option>
       <option value="qwen">通义千问</option>
-      <option value="glm">智谱 GLM</option>
       <option value="custom">OpenAI 兼容（自定义）</option>
     </select></div>
     <div><label class="fl">模型名</label><input id="aiModel" placeholder="如 deepseek-chat"></div>
   </div>
+  <div class="jnote" id="aiFreeTip" style="display:none;margin:6px 0 0"></div>
   <label class="fl">接口地址 Base URL（选服务商自动带出，可改为中转/私有部署）</label><input id="aiBase" placeholder="https://...">
   <label class="fl">API Key</label><input id="aiKey" type="password" placeholder="sk-...">
   <label class="legend"><input type="checkbox" id="aiRemember" checked style="min-height:0;margin:0">记住 Key（关掉则仅本次浏览有效，关闭页面即清除）</label>
@@ -2123,12 +2207,15 @@ def page_overview(urls):
 </section>
 <section id="secTasks" style="display:none">
   <h2><svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l2 2"/><circle cx="12" cy="12" r="9"/></svg>定时任务<span class="cnt" id="taskCnt"></span></h2>
-  <p style="margin:0 0 10px;font-size:12px;color:var(--sub)">给自己定的死线：到期的任务会自动浮出在「今日提醒」 · 存本机浏览器，零云端依赖</p>
+  <p style="margin:0 0 10px;font-size:12px;color:var(--sub)">给自己定的死线：到期的任务会自动浮出在「今日提醒」 · 存本机浏览器，零云端依赖 · 开启桌面提醒后，页面开着时每分钟检查，到期弹系统通知（关掉网页收不到通知，但任务仍会出现在下次打开的「今日提醒」里）</p>
   <div class="formrow">
     <div><label class="fl">任务内容</label><input id="taskTitle" placeholder="如：9 月 25 日前投完字节网申"></div>
     <div><label class="fl">应完成日期</label><input id="taskDate" type="date"></div>
   </div>
-  <div style="margin-top:10px"><button type="button" class="btn btn-pri" id="taskAdd">添加任务</button></div>
+  <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+    <button type="button" class="btn btn-pri" id="taskAdd">添加任务</button>
+    <button type="button" class="btn btn-gray" id="remArm">开启桌面提醒</button>
+  </div>
   <div id="taskList" style="margin-top:12px"></div>
 </section>
 <section id="secAgent" style="display:none">
@@ -2451,6 +2538,8 @@ function aiClearCfg(){
 function aiOnProvider(){
   var p=AI_PRESETS[$('aiProvider').value];
   if(p&&p.base){$('aiBase').value=p.base;$('aiModel').value=p.model}
+  var tip=$('aiFreeTip');
+  if(tip){tip.style.display=p&&p.tip?'':'none';tip.textContent=p&&p.tip?('免费通道：'+p.tip):''}
 }
 function initAiSettings(){
   var c=aiCfg(),p=AI_PRESETS[c.provider]||AI_PRESETS.deepseek;
@@ -2460,6 +2549,7 @@ function initAiSettings(){
   $('aiKey').value=c.key;
   $('aiRemember').checked=c.remember;
   aiSetStatus(aiReady()?'untest':'mock');
+  (function(){var q=AI_PRESETS[c.provider],tip=$('aiFreeTip');if(tip){tip.style.display=q&&q.tip?'':'none';tip.textContent=q&&q.tip?('免费通道：'+q.tip):''}})();
   $('aiProvider').addEventListener('change',aiOnProvider);
   $('aiRemember').addEventListener('change',aiSaveCfg);
   $('aiKey').addEventListener('change',aiSaveCfg);

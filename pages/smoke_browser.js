@@ -761,6 +761,12 @@ const MOCK = `
     click('rag');
     out.ragOpen = vis('secRag');
     out.ragSecIn = !!document.querySelector('#secRag .ragsec, #ov_secRag .ragsec');
+    out.ragCnt = ((document.querySelector('#secRag .ragcnt, #ov_secRag .ragcnt') || {}).textContent || '');
+    out.ragStat = ((document.querySelector('#secRag .ragstat, #ov_secRag .ragstat') || {}).textContent || '').slice(0, 24);
+    out.ragSibling = (() => { const r = document.getElementById('ov_secRag') || document.getElementById('secRag'); return !!r && !(r.closest && r.closest('#ov_ovToday, #ovToday')); })();
+    out.remArm = !!(document.getElementById('ov_remArm') || document.getElementById('remArm'));
+    out.remTick = typeof window.remTick === 'function';
+    out.rvMic = typeof window.rvMic === 'function';
     click('mail');
     out.mailOpen = vis('secMail') && vis('secIb');
     out.ibRaw = !!(document.getElementById('ov_ibRaw') || document.getElementById('ibRaw'));
@@ -770,6 +776,9 @@ const MOCK = `
     click('cfg');
     out.cfgOpen = vis('secAi') && vis('secAg');
     out.agFnSel = !!(document.getElementById('ov_agFnSel') || document.getElementById('agFnSel'));
+    const prov = document.getElementById('ov_aiProvider') || document.getElementById('aiProvider');
+    out.freePresets = prov ? prov.querySelectorAll('option').length : -1;
+    out.freeTip = !!(document.getElementById('ov_aiFreeTip') || document.getElementById('aiFreeTip'));
     click('me') || true;
     const meTab2 = Array.from(document.querySelectorAll('nav.tabbar .tab')).find((t) => t.textContent === '个人中心');
     if (meTab2) meTab2.click();
@@ -789,6 +798,9 @@ const MOCK = `
   if (!myspace.schedOpen || myspace.schedRows < 1) errors.push('sched broken');
   if (!myspace.agentOpen || !myspace.chatSent) errors.push('agent chat broken');
   if (!myspace.ragOpen || !myspace.ragSecIn) errors.push('knowledge base broken');
+  if (!myspace.ragSibling || !myspace.ragCnt) errors.push('rag sibling broken');
+  if (!myspace.remArm || !myspace.remTick || !myspace.rvMic) errors.push('remind/mic broken');
+  if (myspace.freePresets < 8 || !myspace.freeTip) errors.push('free presets broken');
   if (!myspace.mailOpen || !myspace.ibRaw) errors.push('mail workbench broken');
   if (!myspace.appsOpen || !myspace.appCards) errors.push('apps view broken');
   if (!myspace.cfgOpen || !myspace.agFnSel) errors.push('cfg view broken');
