@@ -20,7 +20,7 @@ PAGES = [
     ("JgXPaIiaDMGt2xH3vBftAo", SINGLE),
 ]
 
-MSG = "v34：免费 AI 通道（智谱 glm-4-flash / 硅基流动 / OpenRouter / Groq 一键预设）· 定时任务桌面提醒（页面打开期间每分钟检查，到期弹系统通知）· 面试复盘语音输入（浏览器免费识别，口述面试过程自动生成 AI 复盘）· 修复个人知识库空白并新增语料概览"
+MSG = "v35：AI 零配置开箱即用——未填 Key 默认走免注册免费通道（失败自动重试，仍不通回落演示模式），全部 AI 功能无需任何设置即可使用 · 保留一键免费预设与自带 Key 专属通道"
 
 
 def run_page_script(name, args, token):

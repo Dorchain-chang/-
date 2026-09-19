@@ -141,6 +141,8 @@ const MOCK = `
 
   await page.addInitScript({ content: 'window.__SCHEMA__=' + JSON.stringify(SCHEMA) + ';window.__TABLE__=' + JSON.stringify(TABLE) + ';' });
   await page.addInitScript({ content: MOCK });
+  // 关掉零配置免费通道：冒烟保持离线确定性（无 Key → Mock），不依赖外网
+  await page.addInitScript({ content: 'try{localStorage.setItem("wb_ai_free","0")}catch(e){}' });
   const t0 = Date.now();
   await page.goto('file:///' + TARGET.replace(/\\/g, '/'));
   await page.waitForFunction(() => {
@@ -779,6 +781,8 @@ const MOCK = `
     const prov = document.getElementById('ov_aiProvider') || document.getElementById('aiProvider');
     out.freePresets = prov ? prov.querySelectorAll('option').length : -1;
     out.freeTip = !!(document.getElementById('ov_aiFreeTip') || document.getElementById('aiFreeTip'));
+    out.freeCh = typeof window.aiFreeChat === 'function' && typeof window.aiFreeOnce === 'function' && String(window.AI_FREE_URL || '').indexOf('https://') === 0;
+    out.freeOff = localStorage.getItem('wb_ai_free') === '0' && window.aiFreeOn && window.aiFreeOn() === false;
     click('me') || true;
     const meTab2 = Array.from(document.querySelectorAll('nav.tabbar .tab')).find((t) => t.textContent === '个人中心');
     if (meTab2) meTab2.click();
@@ -800,7 +804,8 @@ const MOCK = `
   if (!myspace.ragOpen || !myspace.ragSecIn) errors.push('knowledge base broken');
   if (!myspace.ragSibling || !myspace.ragCnt) errors.push('rag sibling broken');
   if (!myspace.remArm || !myspace.remTick || !myspace.rvMic) errors.push('remind/mic broken');
-  if (myspace.freePresets < 8 || !myspace.freeTip) errors.push('free presets broken');
+  if (myspace.freePresets < 9 || !myspace.freeTip) errors.push('free presets broken');
+  if (!myspace.freeCh || !myspace.freeOff) errors.push('zero-config ai channel broken');
   if (!myspace.mailOpen || !myspace.ibRaw) errors.push('mail workbench broken');
   if (!myspace.appsOpen || !myspace.appCards) errors.push('apps view broken');
   if (!myspace.cfgOpen || !myspace.agFnSel) errors.push('cfg view broken');

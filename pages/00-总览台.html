@@ -506,10 +506,11 @@ nav.tabbar .tab{cursor:pointer;font-family:inherit}
 </section>
 <section id="secAi" style="display:none">
   <h2><svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6M9 13h4"/><circle cx="9" cy="17" r="1"/></svg>AI 设置<span class="cnt" id="ov_aiStatus" style="font-weight:500;font-size:12px"></span></h2>
-  <p style="margin:0 0 10px;font-size:12px;color:var(--sub)">模型调用使用你自己的 API Key，只存在本机浏览器，不上传服务器 · 请勿在公用电脑保存</p>
+  <p style="margin:0 0 10px;font-size:12px;color:var(--sub)">默认走零配置免费通道：无需注册、无需 Key，打开就能用（公共免费池，高峰可能限流）· 填入自己的 API Key 可切换到更稳的专属通道，Key 只存在本机浏览器，不上传服务器</p>
   <div class="formrow">
     <div><label class="fl">服务商</label><select id="ov_aiProvider">
-      <option value="glm">智谱 GLM · glm-4-flash 免费 ⭐</option>
+      <option value="free">零配置免费通道 · 免注册免 Key（默认）⭐</option>
+      <option value="glm">智谱 GLM · glm-4-flash 免费</option>
       <option value="siliconflow">硅基流动 · 注册送额度 ⭐</option>
       <option value="openrouter">OpenRouter · :free 模型免费 ⭐</option>
       <option value="groq">Groq · 免费额度 ⭐</option>
@@ -528,7 +529,7 @@ nav.tabbar .tab{cursor:pointer;font-family:inherit}
     <button type="button" class="btn btn-pri" id="ov_aiTest">测试连接</button>
     <button type="button" class="btn btn-gray" id="ov_aiClear">清除配置</button>
   </div>
-  <p style="margin:10px 0 0;font-size:11px;color:var(--sub)">会发给模型的内容：简历文本、岗位描述、面试记录，仅你所用服务商可见；未配置 Key 时所有 AI 功能返回演示数据</p>
+  <p style="margin:10px 0 0;font-size:11px;color:var(--sub)">会发给模型的内容：简历文本、岗位描述、面试记录 · 免费通道会经过公共匿名池（内容不含账号信息），填入自己的 Key 后仅你所用服务商可见</p>
 </section>
 <section id="secAg" style="display:none">
   <h2><svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/></svg>Agent 调参台<span class="cnt" id="ov_agStatus" style="font-weight:500;font-size:12px"></span></h2>
@@ -1076,6 +1077,7 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
 
 /* ---------- AI 核心（BYOK，全站共享） ---------- */
 var AI_PRESETS={
+  'free':{base:'https://text.pollinations.ai/openai',model:'openai-fast',free:1,tip:'零配置默认通道：免注册免 Key，打开即用；公共免费池高峰可能限流，稍等重试即可'},
   'deepseek':{base:'https://api.deepseek.com/v1',model:'deepseek-chat'},
   'kimi':{base:'https://api.moonshot.cn/v1',model:'moonshot-v1-8k'},
   'qwen':{base:'https://dashscope.aliyuncs.com/compatible-mode/v1',model:'qwen-plus'},
@@ -1088,14 +1090,37 @@ var AI_PRESETS={
 function aiStore(){return localStorage.getItem('wb_ai_remember')==='0'?sessionStorage:localStorage}
 function aiCfg(){
   var s=aiStore();
-  return {provider:localStorage.getItem('wb_ai_provider')||'deepseek',
+  return {provider:localStorage.getItem('wb_ai_provider')||'free',
     base:trimStr(s.getItem('wb_ai_base')||''),key:trimStr(s.getItem('wb_ai_key')||''),
     model:trimStr(s.getItem('wb_ai_model')||''),remember:localStorage.getItem('wb_ai_remember')!=='0'};
 }
-function aiReady(){var c=aiCfg();return !!(c.key&&c.base&&c.model)}
+/* ---------- 零配置免费通道（无 Key 也能用；公共匿名池，失败自动重试一次） ---------- */
+var AI_FREE_URL='https://text.pollinations.ai/openai';
+var AI_FREE_MODEL='openai-fast';
+function aiFreeOn(){try{return localStorage.getItem('wb_ai_free')!=='0'}catch(e){return true}}
+function aiFreeBad(s){var t=String(s||'').toLowerCase();return t.indexOf('key budget')>=0||t.indexOf('enough credits')>=0||t.indexOf('rate limit')>=0||t.indexOf('unavailable')>=0||t.indexOf('enter.pollinations.ai')>=0}
+function aiFreeOnce(messages,t,mt){
+  var body={model:AI_FREE_MODEL,messages:messages,temperature:t};
+  if(mt)body.max_tokens=mt;
+  return fetch(AI_FREE_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(function(r){return r.json().then(function(j){
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      var txt=j.choices&&j.choices[0]&&j.choices[0].message?j.choices[0].message.content:'';
+      if(!trimStr(txt)||aiFreeBad(txt))throw new Error('free channel busy');
+      return txt;
+    })});
+}
+function aiFreeChat(messages,t,mt){
+  return aiFreeOnce(messages,t,mt).catch(function(){
+    return new Promise(function(res){setTimeout(res,3000)}).then(function(){return aiFreeOnce(messages,t,mt)});
+  }).catch(function(){
+    return new Promise(function(res){setTimeout(res,6000)}).then(function(){return aiFreeOnce(messages,t,mt)});
+  });
+}
+function aiReady(){var c=aiCfg();if(c.key&&c.base&&c.model)return true;return aiFreeOn()}
 // 去掉 Base URL 结尾的斜杠（不用正则，见 check_escapes.py）
 function aiBase(){var b=aiCfg().base;while(b.length&&b.charCodeAt(b.length-1)===47)b=b.slice(0,-1);return b}
-function aiMockReply(){return '【演示数据 · Mock 模式】未配置 API Key，当前为演示输出；在「AI 设置」里填入自己的 Key 后，这里将返回真实 AI 结果。'}
+function aiMockReply(){return '【演示数据 · Mock 模式】免费 AI 通道暂时没连上（可能限流或网络不佳），稍后重试即可；也可在「AI 设置」里填入自己的 Key 获得更稳的通道。'}
 /* ---------- Agent 调参台：参数分层（连接层 aiCfg / 生成层 AGENT_FNS+用户覆盖 / 功能层调用点） ---------- */
 var AGENT_FNS={
   parse:{label:'简历解析',t:0.2,mt:2000,tip:'结构化抽取，要稳定复现，建议 0.1-0.2'},
@@ -1133,21 +1158,31 @@ function aiChat(messages,opts){
   var t=(tune?tune.t:(opts.temperature!=null?opts.temperature:0.5));
   var mt=(tune?tune.mt:opts.maxTokens);
   var t0=Date.now();
-  if(!aiReady()){
+  var c=aiCfg();
+  if(c.key&&c.base&&c.model){
+    var body={model:c.model,messages:messages,temperature:t};
+    if(mt)body.max_tokens=mt;
+    return fetch(aiBase()+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+c.key},body:JSON.stringify(body)})
+      .then(function(r){return r.json().then(function(j){
+        if(!r.ok){agTrace(opts.fn,{t:t,mt:mt,ms:Date.now()-t0,mock:false,chars:0});throw new Error((j.error&&j.error.message)||('HTTP '+r.status))}
+        var txt=j.choices&&j.choices[0]&&j.choices[0].message?j.choices[0].message.content:'';
+        agTrace(opts.fn,{t:t,mt:mt,ms:Date.now()-t0,mock:false,chars:String(txt||'').length});
+        return txt;
+      })});
+  }
+  if(!aiFreeOn()){
     agTrace(opts.fn,{t:t,mt:mt,ms:Date.now()-t0,mock:true,chars:0});
     return Promise.resolve(aiMockReply());
   }
-  var c=aiCfg();
-  var body={model:c.model,messages:messages,temperature:t};
-  if(mt)body.max_tokens=mt;
-  return fetch(aiBase()+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+c.key},body:JSON.stringify(body)})
-    .then(function(r){return r.json().then(function(j){
-      if(!r.ok){agTrace(opts.fn,{t:t,mt:mt,ms:Date.now()-t0,mock:false,chars:0});throw new Error((j.error&&j.error.message)||('HTTP '+r.status))}
-      var txt=j.choices&&j.choices[0]&&j.choices[0].message?j.choices[0].message.content:'';
-      agTrace(opts.fn,{t:t,mt:mt,ms:Date.now()-t0,mock:false,chars:String(txt||'').length});
-      return txt;
-    })});
+  return aiFreeChat(messages,t,mt).then(function(txt){
+    agTrace(opts.fn,{t:t,mt:mt,ms:Date.now()-t0,mock:false,chars:String(txt||'').length});
+    return txt;
+  }).catch(function(){
+    agTrace(opts.fn,{t:t,mt:mt,ms:Date.now()-t0,mock:true,chars:0});
+    return aiMockReply();
+  });
 }
+window.aiFreeChat=aiFreeChat;window.aiFreeOnce=aiFreeOnce;window.aiFreeOn=aiFreeOn;window.AI_FREE_URL=AI_FREE_URL;
 
 
 /* ---------- 简历↔岗位 匹配打分（BYOK · 结果只存本机） ---------- */
@@ -2365,7 +2400,7 @@ function ibRawParse(){
   if(!txt){alert('先把邮件原文粘贴进来');return}
   var btn=document.getElementById('ibRawBtn'),tip=document.getElementById('ibRawTip');
   if(btn){btn.disabled=true;btn.textContent='解析中…'}
-  if(tip){tip.style.display='block';tip.textContent='正在解析（'+(aiReady()?'你的模型 Key':'演示模式')+'）…'}
+  if(tip){tip.style.display='block';tip.textContent='正在解析（'+(aiCfg().key?'你的模型 Key':'零配置免费通道')+'）…'}
   var r={'公司':'','发件人':'手工粘贴','类型':'待定','事项时间':'','原文摘要':txt.slice(0,1500),'状态':'待确认'};
   function finish(o){
     r['公司']=trimStr(o['公司']||'')||'未识别';
@@ -2698,7 +2733,7 @@ function aiTestConn(){
 function aiClearCfg(){
   ['wb_ai_provider','wb_ai_remember'].forEach(function(k){localStorage.removeItem(k)});
   ['wb_ai_base','wb_ai_key','wb_ai_model'].forEach(function(k){localStorage.removeItem(k);sessionStorage.removeItem(k)});
-  $('ov_aiProvider').value='deepseek';$('ov_aiBase').value=AI_PRESETS.deepseek.base;$('ov_aiModel').value=AI_PRESETS.deepseek.model;$('ov_aiKey').value='';$('ov_aiRemember').checked=true;
+  $('ov_aiProvider').value='free';$('ov_aiBase').value=AI_PRESETS.free.base;$('ov_aiModel').value=AI_PRESETS.free.model;$('ov_aiKey').value='';$('ov_aiRemember').checked=true;
   aiSetStatus('mock');
 }
 function aiOnProvider(){
@@ -2714,7 +2749,7 @@ function initAiSettings(){
   $('ov_aiModel').value=c.model||p.model;
   $('ov_aiKey').value=c.key;
   $('ov_aiRemember').checked=c.remember;
-  aiSetStatus(aiReady()?'untest':'mock');
+  aiSetStatus(c.key?'untest':'mock',c.key?'':'未填 Key，走零配置免费通道');
   (function(){var q=AI_PRESETS[c.provider],tip=$('aiFreeTip');if(tip){tip.style.display=q&&q.tip?'':'none';tip.textContent=q&&q.tip?('免费通道：'+q.tip):''}})();
   $('ov_aiProvider').addEventListener('change',aiOnProvider);
   $('ov_aiRemember').addEventListener('change',aiSaveCfg);
