@@ -20,7 +20,7 @@ PAGES = [
     ("JgXPaIiaDMGt2xH3vBftAo", SINGLE),
 ]
 
-MSG = "v37：品牌升级为 Job Seeker —— 全站改名 + 新 Logo 徽标（手提箱+对勾，随主题色变色）+ 浏览器标签图标 · 独立站点版 https://job-hunt-desk-78822.app.workbuddy.host/"
+MSG = "v38：界面专业化改版（参考 Vercel Geist 设计语言）——去渐变化：墨色主按钮/单色强调、Hero 彩色横幅改白底标题条、统计卡去彩色顶边改左对齐等宽数字、侧栏激活态改浅灰底+墨色左标、分组标题改等宽小标签、全站 8px 圆角+发丝线边框、背景去彩色光斑、主题预设换新色板"
 
 
 def run_page_script(name, args, token):

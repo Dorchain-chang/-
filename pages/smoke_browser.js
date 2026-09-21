@@ -288,10 +288,10 @@ const MOCK = `
     const saved = localStorage.getItem('wb_theme');
     const rgbVar = getComputedStyle(document.documentElement).getPropertyValue('--pri-rgb').trim();
     localStorage.removeItem('wb_theme');
-    return { ok: true, open, n: sws.length, pri, gradHas: grad.indexOf('linear-gradient') === 0, saved, rgbVar };
+    return { ok: true, open, n: sws.length, pri, grad: grad.trim(), saved, rgbVar };
   });
-  console.log('主题面板: 打开=', theme.open, '| 预设数=', theme.n, '| 切预设后 --pri=', theme.pri, '| 渐变生效=', theme.gradHas, '| 持久化=', theme.saved, '| --pri-rgb=', theme.rgbVar);
-  if (!theme.ok || !theme.open || theme.n < 7 || !theme.gradHas) errors.push('theme picker broken');
+  console.log('主题面板: 打开=', theme.open, '| 预设数=', theme.n, '| 切预设后 --pri=', theme.pri, '| --grad=', theme.grad, '| 持久化=', theme.saved, '| --pri-rgb=', theme.rgbVar);
+  if (!theme.ok || !theme.open || theme.n < 7 || theme.grad !== theme.pri) errors.push('theme picker broken');
 
   // AI 设置（BYOK + Mock）：预设联动、无 Key 测试进演示模式
   const ai = await page.evaluate(() => {

@@ -154,11 +154,11 @@ SITE_ADAPTER = r"""
   }
   document.addEventListener('DOMContentLoaded',function(){
     var bar=document.createElement('div');
-    bar.style.cssText='position:relative;z-index:99;background:#eff6ff;color:#1e3a8a;text-align:center;padding:7px 12px;font-size:12.5px;border-bottom:1px solid #bfdbfe;line-height:1.6';
+    bar.style.cssText='position:relative;z-index:99;background:#171717;color:#d4d4d4;text-align:center;padding:7px 12px;font-size:12.5px;line-height:1.6';
     bar.innerHTML='独立站点版：数据保存在本机浏览器（不上传服务器）· 换设备或怕丢请先导出备份 '
-      +'<a href="javascript:void(0)" id="qzExp" style="color:#1d4ed8;text-decoration:underline;margin-left:6px">导出备份</a> '
-      +'<a href="javascript:void(0)" id="qzImp" style="color:#1d4ed8;text-decoration:underline;margin-left:6px">导入备份</a> '
-      +'<a href="javascript:void(0)" id="qzRst" style="color:#b45309;text-decoration:underline;margin-left:6px">重置为最新快照</a>';
+      +'<a href="javascript:void(0)" id="qzExp" style="color:#fff;text-decoration:underline;margin-left:6px">导出备份</a> '
+      +'<a href="javascript:void(0)" id="qzImp" style="color:#fff;text-decoration:underline;margin-left:6px">导入备份</a> '
+      +'<a href="javascript:void(0)" id="qzRst" style="color:#f2c1c3;text-decoration:underline;margin-left:6px">重置为最新快照</a>';
     document.body.insertBefore(bar,document.body.firstChild);
     var e=document.getElementById('qzExp');if(e)e.onclick=doExport;
     var i2=document.getElementById('qzImp');if(i2)i2.onclick=doImport;
