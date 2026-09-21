@@ -20,7 +20,7 @@ PAGES = [
     ("JgXPaIiaDMGt2xH3vBftAo", SINGLE),
 ]
 
-MSG = "v35：AI 零配置开箱即用——未填 Key 默认走免注册免费通道（失败自动重试，仍不通回落演示模式），全部 AI 功能无需任何设置即可使用 · 保留一键免费预设与自带 Key 专属通道"
+MSG = "v37：品牌升级为 Job Seeker —— 全站改名 + 新 Logo 徽标（手提箱+对勾，随主题色变色）+ 浏览器标签图标 · 独立站点版 https://job-hunt-desk-78822.app.workbuddy.host/"
 
 
 def run_page_script(name, args, token):

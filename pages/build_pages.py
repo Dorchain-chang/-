@@ -1,9 +1,41 @@
 #!/usr/bin/env python3
 """Build 4 modular HTML pages for the qiuzhao workbench."""
 from pathlib import Path
-import json, re
+import base64, json, re
 
 OUT = Path(__file__).parent
+
+# ----------------- 品牌 -----------------
+# 站名：Job Seeker（原「秋招求职台」）
+BRAND = "Job Seeker"
+BRAND_TITLE = "Job Seeker · 秋招求职工作台"
+
+# Logo 图形：手提箱 + 对勾 = 「投递并确认」，隐喻求职全流程闭环。
+# 纯路径、无字体依赖、无外链，18~120px 均清晰；白色描边，配渐变底章使用。
+LOGO_SVG = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9"'
+    ' stroke-linecap="round" stroke-linejoin="round">'
+    '<rect x="3" y="7.7" width="18" height="12.3" rx="3.1"/>'
+    '<path d="M8.5 7.7V6.2A2.2 2.2 0 0 1 10.7 4h2.6a2.2 2.2 0 0 1 2.2 2.2v1.5"/>'
+    '<path d="m8.9 13.8 2.3 2.3 4.1-4.5"/>'
+    '</svg>'
+)
+
+# favicon：同一图形自带渐变（不依赖页面 CSS 变量），base64 免转义
+_FAVICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
+    '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
+    '<stop offset="0" stop-color="#3b5bfd"/><stop offset="1" stop-color="#7c3aed"/>'
+    '</linearGradient></defs>'
+    '<rect width="32" height="32" rx="9" fill="url(#g)"/>'
+    '<g fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">'
+    '<rect x="7" y="12" width="18" height="13" rx="3.2"/>'
+    '<path d="M12.4 12V10.2A2.4 2.4 0 0 1 14.8 7.8h2.4a2.4 2.4 0 0 1 2.4 2.4V12"/>'
+    '<path d="m12.6 18.4 2.4 2.4 4.3-4.6"/>'
+    '</g></svg>'
+)
+FAVICON_DATA = ('data:image/svg+xml;base64,'
+                + base64.b64encode(_FAVICON_SVG.encode('utf-8')).decode('ascii'))
 
 # ----------------- common head/css/js shell -----------------
 JOBS_ID = "GgZ71tywhs4HEZytFSqXTP"
@@ -47,8 +79,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;c
 /* ---------- 顶栏：毛玻璃 ---------- */
 nav.tabbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.72);backdrop-filter:saturate(180%) blur(16px);-webkit-backdrop-filter:saturate(180%) blur(16px);border-bottom:1px solid rgba(230,234,242,.9)}
 nav.tabbar .inner{max-width:1000px;margin:0 auto;display:flex;align-items:center;gap:6px;padding:10px 16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
-nav.tabbar a.logo{font-weight:800;font-size:16px;color:var(--txt);text-decoration:none;display:flex;align-items:center;gap:8px;flex:none;margin-right:6px;letter-spacing:.2px}
-nav.tabbar a.logo svg{width:28px;height:28px;background:var(--grad);border-radius:8px;padding:6px;stroke:#fff;box-shadow:0 2px 8px rgba(var(--pri-rgb),.35);flex:none}
+nav.tabbar a.logo{font-weight:800;font-size:16.5px;color:var(--txt);text-decoration:none;display:flex;align-items:center;gap:9px;flex:none;margin-right:12px;letter-spacing:-.1px}
+nav.tabbar a.logo .lm{width:30px;height:30px;border-radius:10px;background:var(--grad);display:flex;align-items:center;justify-content:center;flex:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 3px 10px rgba(var(--pri-rgb),.38);transition:transform .16s ease,box-shadow .16s ease}
+nav.tabbar a.logo .lm svg{width:18px;height:18px;display:block}
+nav.tabbar a.logo .lw{white-space:nowrap}
+nav.tabbar a.logo .lw b{color:var(--pri);font-weight:800}
+nav.tabbar a.logo:hover .lm{transform:translateY(-1px);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 6px 16px rgba(var(--pri-rgb),.45)}
 nav.tabbar .tab{flex:none;padding:8px 15px;border-radius:999px;font-size:13px;color:var(--sub);text-decoration:none;font-weight:600;white-space:nowrap;border:1px solid transparent;background:transparent;transition:background .15s,color .15s}
 nav.tabbar .tab[aria-current="page"]{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 2px 10px rgba(var(--pri-rgb),.35)}
 nav.tabbar .tab:not([aria-current]):hover{background:rgba(var(--pri-rgb),.08);color:var(--pri)}
@@ -599,22 +635,41 @@ var AI_FREE_MODEL='openai-fast';
 function aiFreeOn(){try{return localStorage.getItem('wb_ai_free')!=='0'}catch(e){return true}}
 function aiFreeBad(s){var t=String(s||'').toLowerCase();return t.indexOf('key budget')>=0||t.indexOf('enough credits')>=0||t.indexOf('rate limit')>=0||t.indexOf('unavailable')>=0||t.indexOf('enter.pollinations.ai')>=0}
 function aiFreeOnce(messages,t,mt){
+  /* 免费通道是推理模型：限制 max_tokens 会让 token 全被推理吃掉、正文为空，
+     所以这里不透传 max_tokens（输出长度由各功能自己截取/解析）。
+     随机查询参数：端点经 CDN 缓存，命中旧缓存可能拿到过期的错误响应。
+     超时保护：匿名层有每 IP 队列，塞满时请求会被挂住，必须限时避免界面卡死 */
   var body={model:AI_FREE_MODEL,messages:messages,temperature:t};
-  if(mt)body.max_tokens=mt;
-  return fetch(AI_FREE_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
-    .then(function(r){return r.json().then(function(j){
+  var url=AI_FREE_URL+'?r='+Date.now()+Math.floor(Math.random()*100000);
+  var ctl=window.AbortController?new AbortController():null;
+  var timer=ctl?setTimeout(function(){ctl.abort()},12000):null;
+  return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctl?ctl.signal:undefined})
+    .then(function(r){if(timer)clearTimeout(timer);return r.json().then(function(j){
       if(!r.ok)throw new Error('HTTP '+r.status);
       var txt=j.choices&&j.choices[0]&&j.choices[0].message?j.choices[0].message.content:'';
       if(!trimStr(txt)||aiFreeBad(txt))throw new Error('free channel busy');
       return txt;
-    })});
+    })})
+    .catch(function(e){if(timer)clearTimeout(timer);throw e});
 }
+var AI_FREE_LAST=0;
 function aiFreeChat(messages,t,mt){
-  return aiFreeOnce(messages,t,mt).catch(function(){
-    return new Promise(function(res){setTimeout(res,3000)}).then(function(){return aiFreeOnce(messages,t,mt)});
-  }).catch(function(){
-    return new Promise(function(res){setTimeout(res,6000)}).then(function(){return aiFreeOnce(messages,t,mt)});
-  });
+  /* 匿名层是每 IP 队列：① 连续调用之间留 1.5s 间隔，避免批量任务把队列打满拿到 429；
+     ② 失败立刻重试（失败响应通常很快），最多 3 次尝试；③ 单次请求 12s 超时，不挂住界面 */
+  var waits=[0,1000,2500],i=1;
+  function gate(){
+    var now=Date.now(),d=AI_FREE_LAST+1500-now;
+    AI_FREE_LAST=now;
+    return d>0?new Promise(function(res){setTimeout(res,d)}):Promise.resolve();
+  }
+  function run(){
+    return aiFreeOnce(messages,t,mt).catch(function(e){
+      if(i>=waits.length)throw e;
+      var w=waits[i];i++;
+      return new Promise(function(res){setTimeout(res,w)}).then(run);
+    });
+  }
+  return gate().then(run);
 }
 function aiReady(){var c=aiCfg();if(c.key&&c.base&&c.model)return true;return aiFreeOn()}
 // 去掉 Base URL 结尾的斜杠（不用正则，见 check_escapes.py）
@@ -1246,7 +1301,7 @@ function jdBookmarklet(){
    +'var s=document.body.innerText||"";'
    +'var k=s.search(/职位描述|岗位描述|工作职责|任职要求|岗位职责|职责描述|Responsibilities|Job Description/i);'
    +'if(k>0)s=s.slice(k);s=s.slice(0,6000);'
-   +'if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(s).then(function(){alert("已复制岗位 JD（"+s.length+" 字）。回到秋招求职台的岗位卡片，点「贴 JD 打分」粘贴即可")},function(){prompt("自动复制被浏览器拦截，请手动复制：",s)})}'
+   +'if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(s).then(function(){alert("已复制岗位 JD（"+s.length+" 字）。回到 Job Seeker 秋招岗位页的岗位卡片，点「贴 JD 打分」粘贴即可")},function(){prompt("自动复制被浏览器拦截，请手动复制：",s)})}'
    +'else{prompt("请手动复制以下 JD 文本：",s)}'
    +'})();';
 }
@@ -1966,7 +2021,7 @@ window.rvMic=rvMic;window.remTick=remTick;window.remArm=remArm;window.remCandida
 NAV_HTML = """
 <nav class="tabbar">
   <div class="inner">
-    <a class="logo" target="_top" href="{OVERVIEW_URL}"><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>秋招求职台</a>
+    <a class="logo" target="_top" href="{OVERVIEW_URL}" title="Job Seeker · 秋招求职工作台"><span class="lm">""" + LOGO_SVG + """</span><span class="lw">Job <b>Seeker</b></span></a>
     <div class="sngroup">发现</div>
     <a class="tab" target="_top" href="{OVERVIEW_URL}" {OVERVIEW_ACTIVE}>今日提醒</a>
     <a class="tab" target="_top" href="{AUTUMN_URL}" {AUTUMN_ACTIVE}>秋招岗位</a>
@@ -3449,7 +3504,8 @@ def _wrap_page(title, body, nav, page_js, urls, active, hero=''):
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>{title} · 秋招求职台</title>
+<title>Job Seeker · {title}</title>
+<link rel="icon" href="{FAVICON_DATA}">
 <style>{CSS}</style>
 </head>
 <body class="navside">

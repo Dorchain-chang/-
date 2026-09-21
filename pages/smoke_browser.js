@@ -783,6 +783,12 @@ const MOCK = `
     out.freeTip = !!(document.getElementById('ov_aiFreeTip') || document.getElementById('aiFreeTip'));
     out.freeCh = typeof window.aiFreeChat === 'function' && typeof window.aiFreeOnce === 'function' && String(window.AI_FREE_URL || '').indexOf('https://') === 0;
     out.freeOff = localStorage.getItem('wb_ai_free') === '0' && window.aiFreeOn && window.aiFreeOn() === false;
+    // 品牌：Job Seeker 文字 + 徽标图形 + favicon
+    const lg = document.querySelector('nav.tabbar a.logo');
+    out.brand = lg ? lg.textContent : '';
+    out.brandMark = !!(lg && lg.querySelector('.lm svg'));
+    const ico = document.querySelector('link[rel="icon"]');
+    out.favicon = ico ? (ico.getAttribute('href') || '') : '';
     click('me') || true;
     const meTab2 = Array.from(document.querySelectorAll('nav.tabbar .tab')).find((t) => t.textContent === '个人中心');
     if (meTab2) meTab2.click();
@@ -810,6 +816,9 @@ const MOCK = `
   if (!myspace.appsOpen || !myspace.appCards) errors.push('apps view broken');
   if (!myspace.cfgOpen || !myspace.agFnSel) errors.push('cfg view broken');
   if (!myspace.meOpen || !myspace.backToday) errors.push('me view broken');
+  console.log('品牌: 文字=', myspace.brand, '| 徽标=', myspace.brandMark, '| favicon=', (myspace.favicon || '').slice(0, 28));
+  if ((myspace.brand || '').indexOf('Job Seeker') < 0 || !myspace.brandMark
+      || (myspace.favicon || '').indexOf('data:image/svg+xml') !== 0) errors.push('brand logo broken');
   console.log('--- 实时订阅 ---');
   console.log('外部变更前 query:', beforeQueries, '→ 后:', afterQueries, '| 触发重拉:', afterQueries > beforeQueries, '| handler 实际执行次数:', fired);
   if (mem) console.log('JS 堆: 已用', mem.usedMB, 'MB / 总量', mem.totalMB, 'MB');

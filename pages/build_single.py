@@ -159,7 +159,7 @@ MODS.push({refresh:function(){renderInterns();},setup:function(){renderSelectOpt
 NAV_SINGLE = """
 <nav class="tabbar">
   <div class="inner">
-    <a class="logo" data-goto="overview"><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>秋招求职台</a>
+    <a class="logo" data-goto="overview" title="Job Seeker · 秋招求职工作台"><span class="lm">""" + bp.LOGO_SVG + """</span><span class="lw">Job <b>Seeker</b></span></a>
     <div class="sngroup">发现</div>
     <button type="button" class="tab" data-view="autumn">秋招岗位</button>
     <button type="button" class="tab" data-view="soe">央国企</button>
@@ -368,7 +368,8 @@ function goOffline(){offline=true;setSync('off');$('offBanner').style.display='b
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>秋招求职台 · 一体化工作台</title>
+<title>Job Seeker · 秋招求职工作台</title>
+<link rel="icon" href="{favicon}">
 <style>{css}{css_extra}</style>
 </head>
 <body class="navside">
@@ -382,7 +383,7 @@ function goOffline(){offline=true;setSync('off');$('offBanner').style.display='b
 <script>{js}</script>
 </body>
 </html>
-""".format(css=bp.CSS, css_extra=CSS_EXTRA, nav=NAV_SINGLE, views="\n".join(views),
+""".format(css=bp.CSS, css_extra=CSS_EXTRA, favicon=bp.FAVICON_DATA, nav=NAV_SINGLE, views="\n".join(views),
            lnk=bp.LNKMODAL_HTML, intel=bp.INTELMODAL_HTML, js=js_all)
 
     out1 = HERE / "00-总览台.html"
