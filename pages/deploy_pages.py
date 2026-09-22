@@ -20,7 +20,7 @@ PAGES = [
     ("JgXPaIiaDMGt2xH3vBftAo", SINGLE),
 ]
 
-MSG = "v38：界面专业化改版（参考 Vercel Geist 设计语言）——去渐变化：墨色主按钮/单色强调、Hero 彩色横幅改白底标题条、统计卡去彩色顶边改左对齐等宽数字、侧栏激活态改浅灰底+墨色左标、分组标题改等宽小标签、全站 8px 圆角+发丝线边框、背景去彩色光斑、主题预设换新色板"
+MSG = "v39：Agent 高度自定义 —— 全局人设（一次填写，七个 AI 功能全部带上你的背景）、5 套预设方案、top_p / frequency_penalty / presence_penalty / 模型覆盖 / 输出格式 / 长度 / 语言逐功能可调、参数导出导入备份；并修复「调参台里的 System Prompt 从未真正下发给模型」的缺陷"
 
 
 def run_page_script(name, args, token):

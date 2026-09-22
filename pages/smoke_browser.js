@@ -293,6 +293,65 @@ const MOCK = `
   console.log('主题面板: 打开=', theme.open, '| 预设数=', theme.n, '| 切预设后 --pri=', theme.pri, '| --grad=', theme.grad, '| 持久化=', theme.saved, '| --pri-rgb=', theme.rgbVar);
   if (!theme.ok || !theme.open || theme.n < 7 || theme.grad !== theme.pri) errors.push('theme picker broken');
 
+  // Agent 高级自定义（AGTUNE_JS）：渲染 / 人设 / 预设 / 参数合并 / System 组装 / 备份
+  const agx = await page.evaluate(() => {
+    const b = document.querySelector('.agxbox');
+    if (!b) return { missing: true };
+    const sel = document.querySelector('select[id$="agFnSel"]');
+    const out = { sections: b.querySelectorAll('.agx').length, chips: b.querySelectorAll('.agxpre').length, opts: sel ? sel.options.length : 0 };
+    out.lab = (b.querySelector('[data-f="fnlab"]') || {}).textContent || '';
+    // 人设
+    b.querySelector('[data-f="persona"]').value = '测试人设：求职大模型实习';
+    document.querySelector('.agxsavep').click();
+    out.persona = localStorage.getItem('wb_agent_persona') || '';
+    // 预设：第 5 个 = JSON 严格输出
+    document.querySelectorAll('.agxpre')[4].click();
+    const k0 = sel.value;
+    out.presetApplied = (JSON.parse(localStorage.getItem('wb_agent_tune') || '{}')[k0] || {}).fmt === 'json';
+    // 高级参数保存
+    const setv = (n, v) => { const e = b.querySelector('[data-f="' + n + '"]'); if (e) e.value = v; };
+    setv('tp', '0.9'); setv('model', 'my-model'); setv('lang', 'zh');
+    document.querySelector('.agxsave').click();
+    // 上方基础区保存不能冲掉高级参数（合并语义）
+    const mt = document.querySelector('input[id$="agMt"]');
+    if (mt) mt.value = 1600;
+    const saveBtn = document.querySelector('[id$="agSaveTune"]');
+    if (saveBtn) saveBtn.click();
+    const t0 = JSON.parse(localStorage.getItem('wb_agent_tune') || '{}')[k0] || {};
+    out.merged = { tp: t0.tp, model: t0.model, lang: t0.lang, mt: t0.mt };
+    // 切换功能：面板跟随
+    sel.value = 'review';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    out.switchedLab = (b.querySelector('[data-f="fnlab"]') || {}).textContent || '';
+    out.switchedTp = (b.querySelector('[data-f="tp"]') || {}).value || '';
+    // System 组装：人设 + 用户 system + 风格约束，且用户写了 system 就不带内置提示
+    const msgs = window.agBuildMessages([{ role: 'system', content: '内置系统提示' }, { role: 'user', content: 'x' }], window.agTune('review'));
+    out.sysRole = msgs[0] && msgs[0].role;
+    out.sysHasPersona = msgs[0] && msgs[0].content.indexOf('测试人设') >= 0;
+    // 备份往返
+    const exported = window.agxExport();
+    const parsed = JSON.parse(exported);
+    localStorage.removeItem('wb_agent_tune');
+    const cleared = Object.keys(JSON.parse(localStorage.getItem('wb_agent_tune') || '{}')).length;
+    const okImp = window.agxImport(exported);
+    out.backup = { keys: Object.keys(parsed.tune || {}).length, cleared, okImp, restored: Object.keys(JSON.parse(localStorage.getItem('wb_agent_tune') || '{}')).length };
+    localStorage.removeItem('wb_agent_tune');
+    localStorage.removeItem('wb_agent_persona');
+    return out;
+  });
+  console.log('Agent 高级设置: 小节=', agx.sections, '| 预设=', agx.chips, '| 功能下拉=', agx.opts, '| 当前功能=', agx.lab, '→', agx.switchedLab);
+  console.log('  人设保存=', JSON.stringify(agx.persona), '| 预设生效=', agx.presetApplied, '| 合并后=', JSON.stringify(agx.merged));
+  console.log('  System 组装: role=', agx.sysRole, '| 含人设=', agx.sysHasPersona, '| 备份往返=', JSON.stringify(agx.backup));
+  if (agx.missing) errors.push('agent advanced panel missing');
+  else {
+    if (agx.sections !== 4 || agx.chips < 5) errors.push('agent advanced panel broken');
+    if (!agx.lab || !agx.switchedLab || agx.lab === agx.switchedLab) errors.push('agent panel does not follow function');
+    if (!agx.persona || !agx.presetApplied) errors.push('agent persona/preset broken');
+    if (agx.merged.tp !== '0.9' || agx.merged.model !== 'my-model' || agx.merged.mt !== 1600) errors.push('agent merge semantics broken');
+    if (agx.sysRole !== 'system' || !agx.sysHasPersona) errors.push('agent system assembly broken');
+    if (!agx.backup.okImp || agx.backup.restored < 1 || agx.backup.cleared !== 0) errors.push('agent backup broken');
+  }
+
   // AI 设置（BYOK + Mock）：预设联动、无 Key 测试进演示模式
   const ai = await page.evaluate(() => {
     const g = (id) => document.getElementById('ov_' + id) || document.getElementById(id);

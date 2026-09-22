@@ -280,6 +280,24 @@ label.fl{display:block;margin:6px 0 0}
 .agcol{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fbfbfe}
 .agcol b{font-size:12px;color:var(--sub);display:block;margin-bottom:6px}
 .agcol .jnote{margin:0;max-height:260px;overflow:auto;font-size:12.5px}
+/* ---------- Agent 高级自定义（AGTUNE_JS · 高度可配置） ---------- */
+.agx{border:1px solid var(--line);border-radius:8px;padding:12px;margin-top:12px;background:#fff}
+.agx .agxh{font-size:12px;font-weight:600;color:var(--txt);display:flex;align-items:center;gap:8px;margin-bottom:8px;letter-spacing:-.01em}
+.agx .agxh .cnt{margin-left:auto;font-size:11px;color:var(--sub);font-weight:400}
+.agxgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.agxf{display:flex;flex-direction:column;gap:4px;min-width:0}
+.agxf label{font-size:11px;color:var(--sub);font-weight:600}
+.agxf input[type="number"],.agxf input[type="text"],.agxf select{height:32px;font-size:12.5px;border:1px solid var(--line);border-radius:6px;padding:0 8px;font-family:inherit;background:#fff;color:var(--txt);width:100%}
+.agxf input:focus,.agxf select:focus{outline:none;border-color:var(--pri);box-shadow:0 0 0 2px rgba(var(--pri-rgb),.12)}
+.agxf textarea{font-size:12.5px;border:1px solid var(--line);border-radius:6px;padding:7px 9px;font-family:inherit;background:#fff;color:var(--txt);resize:vertical;width:100%;line-height:1.6}
+.agxf textarea:focus{outline:none;border-color:var(--pri);box-shadow:0 0 0 2px rgba(var(--pri-rgb),.12)}
+.agxrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:9px}
+.agxeff{font-family:var(--mono);font-size:11.5px;color:var(--sub);background:#fafafa;border:1px solid var(--line);border-radius:6px;padding:8px 10px;white-space:pre-wrap;line-height:1.75;margin-top:8px}
+.agxeff b{color:var(--txt);font-weight:600}
+.agxeff .src{color:var(--pri)}
+.agxnote{font-size:11.5px;color:var(--sub);margin-top:7px;line-height:1.6}
+.agxok{font-size:11.5px;color:var(--green);margin-top:7px}
+@media(max-width:680px){.agxgrid{grid-template-columns:1fr 1fr}}
 #agTrace{max-height:220px;overflow:auto;font-size:12.5px}
 @media (max-width:720px){.agab{grid-template-columns:1fr}}
 .mtail{font-size:11px;color:var(--sub);text-align:center;margin-top:4px}
@@ -731,11 +749,14 @@ var AGENT_FNS={
   rag:{label:'知识库问答',t:0.3,mt:900,tip:'要忠于资料、可引用，建议 0.2-0.4'}
 };
 function agAllTune(){try{return JSON.parse(localStorage.getItem('wb_agent_tune')||'{}')}catch(e){return{}}}
-function agDef(k){var d=AGENT_FNS[k]||{t:0.5,mt:1200};return {t:d.t,mt:d.mt,sys:''}}
+function agDef(k){var d=AGENT_FNS[k]||{t:0.5,mt:1200};return {t:d.t,mt:d.mt,sys:'',tp:'',fp:'',pp:'',model:'',fmt:'',len:'',lang:''}}
+/* 生效参数 = 用户覆盖 ?? 内置默认；空串视为「未设置」 */
 function agTune(k){
-  var d=agDef(k),u=agAllTune()[k];
-  var t=(u&&u.t!=null)?u.t:d.t,mt=(u&&u.mt!=null)?u.mt:d.mt,sys=(u&&u.sys)?u.sys:'';
-  return {t:Number(t),mt:Number(mt),sys:sys,lab:(AGENT_FNS[k]&&AGENT_FNS[k].label)||k,tip:(AGENT_FNS[k]&&AGENT_FNS[k].tip)||''};
+  var d=agDef(k),u=agAllTune()[k]||{};
+  function g(n){return (u[n]!==null&&u[n]!==undefined&&u[n]!=='')?u[n]:d[n]}
+  return {t:Number(g('t')),mt:Number(g('mt')),sys:(u.sys?u.sys:''),
+    tp:g('tp'),fp:g('fp'),pp:g('pp'),model:g('model'),fmt:g('fmt'),len:g('len'),lang:g('lang'),
+    lab:(AGENT_FNS[k]&&AGENT_FNS[k].label)||k,tip:(AGENT_FNS[k]&&AGENT_FNS[k].tip)||''};
 }
 function agSetTune(k,obj){
   var m=agAllTune();m[k]=obj;
@@ -751,6 +772,45 @@ function agTrace(fn,o){
     localStorage.setItem('wb_ai_trace',JSON.stringify(a.slice(0,12)));
   }catch(e){}
 }
+/* ---------- Agent 高级自定义（全局人设 + 消息组装 + 采样参数） ---------- */
+var AGX_NL=String.fromCharCode(10);
+function agPersona(){try{return String(localStorage.getItem('wb_agent_persona')||'')}catch(e){return ''}}
+function agSetPersona(v){try{localStorage.setItem('wb_agent_persona',String(v||''));return true}catch(e){alert('本机存储空间不足，人设未保存');return false}}
+/* 输出风格约束：用户在调参台选的格式/长度/语言，追加进 system，不改调用点代码 */
+function agStyleRules(tune){
+  var r=[];
+  if(!tune)return '';
+  if(tune.fmt==='json')r.push('输出必须是严格合法的 JSON，不要代码块围栏，不要任何解释性文字。');
+  else if(tune.fmt==='md')r.push('输出使用 Markdown 结构（标题、列表、表格按需）。');
+  else if(tune.fmt==='text')r.push('输出纯文本，不要用 Markdown 标记或项目符号。');
+  if(tune.len==='short')r.push('回答精简，控制在 150 字以内，直给结论。');
+  else if(tune.len==='long')r.push('回答详细充分，展开论据与示例，结构清晰。');
+  if(tune.lang==='zh')r.push('始终用简体中文回答。');
+  else if(tune.lang==='en')r.push('Always answer in English.');
+  return r.join(AGX_NL);
+}
+/* 组装最终 messages：人设 → 用户 system 覆盖（没写才用内置）→ 风格约束 → 原始正文 */
+function agBuildMessages(messages,tune){
+  var ms=messages.slice(),sys='';
+  if(ms.length&&ms[0]&&ms[0].role==='system'){sys=ms[0].content||'';ms=ms.slice(1)}
+  var head=[],p=trimStr(agPersona());
+  if(p)head.push(p);
+  var u=(tune&&trimStr(tune.sys))?trimStr(tune.sys):'';
+  if(u)head.push(u);else if(trimStr(sys))head.push(trimStr(sys));
+  var rules=agStyleRules(tune);
+  if(rules)head.push(rules);
+  var full=trimStr(head.join(AGX_NL));
+  if(!full)return ms;
+  return [{role:'system',content:full}].concat(ms);
+}
+/* 采样参数：只有用户显式设过才下发，避免把默认值强塞给不兼容的模型 */
+function agExtra(body,tune){
+  if(!tune)return body;
+  if(tune.tp!==null&&tune.tp!==undefined&&tune.tp!=='')body.top_p=Number(tune.tp);
+  if(tune.fp!==null&&tune.fp!==undefined&&tune.fp!=='')body.frequency_penalty=Number(tune.fp);
+  if(tune.pp!==null&&tune.pp!==undefined&&tune.pp!=='')body.presence_penalty=Number(tune.pp);
+  return body;
+}
 function aiChat(messages,opts){
   opts=opts||{};
   var tune=opts.fn?agTune(opts.fn):null;
@@ -758,9 +818,11 @@ function aiChat(messages,opts){
   var mt=(tune?tune.mt:opts.maxTokens);
   var t0=Date.now();
   var c=aiCfg();
+  var ms=agBuildMessages(messages,tune);
   if(c.key&&c.base&&c.model){
-    var body={model:c.model,messages:messages,temperature:t};
+    var body={model:(tune&&tune.model)?tune.model:c.model,messages:ms,temperature:t};
     if(mt)body.max_tokens=mt;
+    agExtra(body,tune);
     return fetch(aiBase()+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+c.key},body:JSON.stringify(body)})
       .then(function(r){return r.json().then(function(j){
         if(!r.ok){agTrace(opts.fn,{t:t,mt:mt,ms:Date.now()-t0,mock:false,chars:0});throw new Error((j.error&&j.error.message)||('HTTP '+r.status))}
@@ -773,7 +835,8 @@ function aiChat(messages,opts){
     agTrace(opts.fn,{t:t,mt:mt,ms:Date.now()-t0,mock:true,chars:0});
     return Promise.resolve(aiMockReply());
   }
-  return aiFreeChat(messages,t,mt).then(function(txt){
+  /* 免费通道只下发 temperature：公共匿名层对 penalty/top_p 兼容性不一致 */
+  return aiFreeChat(ms,t,mt).then(function(txt){
     agTrace(opts.fn,{t:t,mt:mt,ms:Date.now()-t0,mock:false,chars:String(txt||'').length});
     return txt;
   }).catch(function(){
@@ -782,6 +845,197 @@ function aiChat(messages,opts){
   });
 }
 window.aiFreeChat=aiFreeChat;window.aiFreeOnce=aiFreeOnce;window.aiFreeOn=aiFreeOn;window.AI_FREE_URL=AI_FREE_URL;
+
+
+/* ---------- Agent 高级自定义（高度可配置） ---------- */
+var AGX_PRESETS=[
+ {n:'保守 · 可复现',o:{t:0.05,tp:0.7,fp:0,pp:0,len:''}},
+ {n:'均衡（推荐）',o:{t:0.3,tp:'',fp:'',pp:'',len:''}},
+ {n:'创意 · 有表达力',o:{t:0.85,tp:0.95,fp:0.3,pp:0.3,len:'long'}},
+ {n:'极速 · 省 token',o:{t:0.1,mt:400,len:'short'}},
+ {n:'JSON 严格输出',o:{t:0,mt:1200,fmt:'json'}}
+];
+/* 合并语义覆盖：调参台上方只写 t/mt/sys，不能把高级参数冲掉 */
+function agSetTune(k,obj){
+  var m=agAllTune();
+  m[k]=Object.assign({},m[k]||{},obj||{});
+  try{localStorage.setItem('wb_agent_tune',JSON.stringify(m));return true}
+  catch(e){alert('本机存储空间不足，参数未保存');return false}
+}
+function agxKeys(){var a=[];for(var k in AGENT_FNS)a.push(k);return a}
+function agxBox(){return document.querySelector('.agxbox')}
+/* 功能下拉由各页 init() 填充，本模块可能先渲染：拿不到值就退回第一个选项 */
+function agxCur(){
+  var s=document.querySelector('select[id$="agFnSel"]');
+  if(!s)return 'parse';
+  if(s.value)return s.value;
+  if(s.options&&s.options.length&&s.options[0].value)return s.options[0].value;
+  return 'parse';
+}
+function agxF(n){var b=agxBox();return b?b.querySelector('[data-f="'+n+'"]'):null}
+function agxVal(n){var e=agxF(n);return e?e.value:''}
+function agxSrc(u,n){return (u[n]!==null&&u[n]!==undefined&&u[n]!=='')?'自定义':'默认'}
+function agxNote(msg){
+  var n=agxF('note');
+  if(!n)return;
+  n.className='agxok';n.textContent=msg;
+  setTimeout(function(){if(n.textContent===msg){n.textContent='';n.className='agxnote'}},2800);
+}
+function agxEff(){
+  var k=agxCur(),t=agTune(k),u=agAllTune()[k]||{},e=agxF('eff');
+  if(!e)return;
+  function line(a,b,c){return '<b>'+a+'</b> '+b+' <span class="src">'+c+'</span>'}
+  function dash(v){return (v===null||v===undefined||v==='')?'&#8212;':String(v)}
+  var L=[];
+  L.push(line('temperature',t.t.toFixed(2),agxSrc(u,'t'))+'   '+line('max_tokens',String(t.mt),agxSrc(u,'mt')));
+  L.push(line('top_p',dash(u.tp),agxSrc(u,'tp'))+'   '+line('freq',dash(u.fp),agxSrc(u,'fp'))+'   '+line('pres',dash(u.pp),agxSrc(u,'pp')));
+  L.push(line('model',t.model||'跟随全局',agxSrc(u,'model'))+'   '+line('格式',t.fmt||'跟随功能',agxSrc(u,'fmt')));
+  L.push(line('长度',t.len||'默认',agxSrc(u,'len'))+'   '+line('语言',t.lang||'默认',agxSrc(u,'lang')));
+  e.innerHTML=L.join(AGX_NL);
+}
+function agxFill(){
+  var b=agxBox();
+  if(!b)return;
+  var k=agxCur(),u=agAllTune()[k]||{},t=agTune(k);
+  function set(n,v){var e=agxF(n);if(e)e.value=(v===null||v===undefined)?'':v}
+  set('tp',u.tp);set('fp',u.fp);set('pp',u.pp);set('model',u.model);set('fmt',u.fmt);set('len',u.len);set('lang',u.lang);
+  var p=agxF('persona');
+  if(p&&!p.value)p.value=agPersona();
+  var lab=agxF('fnlab');
+  if(lab)lab.textContent=t.lab||k;
+  agxEff();
+}
+/* 功能下拉由各页 init() 填充、晚于本模块渲染：补几次延迟填充，保证首屏显示的是当前功能 */
+function agxBootstrap(){
+  var n=0;
+  function again(){
+    var s=document.querySelector('select[id$="agFnSel"]');
+    if(s&&s.options&&s.options.length)n=99;
+    agxFill();
+    if(n>=99)return;
+    n++;
+    if(n<7)setTimeout(again,n<2?120:(n<4?600:1800));
+  }
+  again();
+}
+function agxRead(){return {tp:agxVal('tp'),fp:agxVal('fp'),pp:agxVal('pp'),model:agxVal('model'),fmt:agxVal('fmt'),len:agxVal('len'),lang:agxVal('lang')}}
+/* 预设会改 temperature / max_tokens，这两个控件在上方基础区，需要同步显示 */
+function agxSyncBase(o){
+  var s=document.querySelector('input[id$="agT"]'),m=document.querySelector('input[id$="agMt"]'),v=document.querySelector('[id$="agTVal"]');
+  if(s&&o.t!=null)s.value=o.t;
+  if(v&&o.t!=null)v.textContent=Number(o.t).toFixed(2);
+  if(m&&o.mt!=null)m.value=o.mt;
+}
+function agxExport(){
+  var d=new Date(),p=function(n){return n<10?'0'+n:''+n};
+  var data={v:1,at:d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()),persona:agPersona(),tune:agAllTune()};
+  var s=JSON.stringify(data,null,2),io=agxF('io');
+  if(io)io.value=s;
+  return s;
+}
+function agxImport(s){
+  try{
+    var d=JSON.parse(s);
+    if(!d||typeof d!=='object')throw new Error('不是合法的参数 JSON');
+    var m=agAllTune(),t=d.tune||{};
+    for(var k in t){if(AGENT_FNS[k])m[k]=Object.assign({},m[k]||{},t[k]||{})}
+    try{localStorage.setItem('wb_agent_tune',JSON.stringify(m))}catch(e){alert('本机存储空间不足，导入未完成');return false}
+    if(d.persona!=null)agSetPersona(d.persona);
+    agxFill();return true;
+  }catch(e){alert('导入失败：'+((e&&e.message)||'格式不对')+'。请粘贴导出的完整 JSON。');return false}
+}
+function agxDownload(){
+  var s=agxExport();
+  var d=new Date(),p=function(n){return n<10?'0'+n:''+n};
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([s],{type:'application/json'}));
+  a.download='JobSeeker参数_'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'.json';
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);if(a.parentNode)a.parentNode.removeChild(a)},1200);
+}
+function agxRender(){
+  var b=agxBox();
+  if(!b||b.getAttribute('data-done'))return;
+  b.setAttribute('data-done','1');
+  var chips='';
+  for(var i=0;i<AGX_PRESETS.length;i++)chips+='<button type="button" class="schip agxpre" data-i="'+i+'">'+AGX_PRESETS[i].n+'</button>';
+  b.innerHTML=
+   '<div class="agx">'+
+    '<div class="agxh">全局人设<span class="cnt">附加到所有 AI 功能的 System 提示最前面</span></div>'+
+    '<div class="agxf"><textarea rows="3" data-f="persona" placeholder="例：我是西南交大 AI 专业 2027 届本科生，求职 AI 大模型 / 算法实习；回答要务实、给可执行建议，不要空话。"></textarea></div>'+
+    '<div class="agxrow"><button type="button" class="btn btn-pri btn-sm agxsavep">保存人设</button>'+
+    '<button type="button" class="btn btn-gray btn-sm agxclearp">清空人设</button>'+
+    '<span style="font-size:11.5px;color:var(--sub)">填一次，七个 AI 功能全部带上你的背景</span></div>'+
+   '</div>'+
+   '<div class="agx">'+
+    '<div class="agxh">预设方案<span class="cnt">点击即套用到「当前功能」</span></div>'+
+    '<div class="agxrow">'+chips+'</div>'+
+   '</div>'+
+   '<div class="agx">'+
+    '<div class="agxh">高级参数<span class="cnt">当前功能：<b data-f="fnlab"></b></span></div>'+
+    '<div class="agxgrid">'+
+     '<div class="agxf"><label>top_p 核采样（0-1）</label><input type="number" data-f="tp" min="0" max="1" step="0.05" placeholder="留空=模型默认"></div>'+
+     '<div class="agxf"><label>frequency_penalty（-2~2）</label><input type="number" data-f="fp" min="-2" max="2" step="0.1" placeholder="留空=模型默认"></div>'+
+     '<div class="agxf"><label>presence_penalty（-2~2）</label><input type="number" data-f="pp" min="-2" max="2" step="0.1" placeholder="留空=模型默认"></div>'+
+     '<div class="agxf"><label>模型覆盖</label><input type="text" data-f="model" placeholder="留空=用 AI 设置里的模型"></div>'+
+     '<div class="agxf"><label>输出格式</label><select data-f="fmt"><option value="">跟随功能</option><option value="json">严格 JSON</option><option value="md">Markdown</option><option value="text">纯文本</option></select></div>'+
+     '<div class="agxf"><label>回答长度</label><select data-f="len"><option value="">默认</option><option value="short">精简（150 字内）</option><option value="long">详细展开</option></select></div>'+
+     '<div class="agxf"><label>回答语言</label><select data-f="lang"><option value="">跟随输入</option><option value="zh">始终简体中文</option><option value="en">始终 English</option></select></div>'+
+    '</div>'+
+    '<div class="agxrow"><button type="button" class="btn btn-pri btn-sm agxsave">保存本功能</button>'+
+    '<button type="button" class="btn btn-gray btn-sm agxapplyall">套用到全部功能</button>'+
+    '<button type="button" class="btn btn-gray btn-sm agxreset1">恢复本功能默认</button>'+
+    '<button type="button" class="btn btn-gray btn-sm agxresetall">清空全部覆盖</button></div>'+
+    '<div class="agxeff" data-f="eff"></div>'+
+    '<div class="agxnote" data-f="note"></div>'+
+    '<div class="agxnote">top_p / penalty 只在填了自己的 Key 时下发；免费公共通道只下发 temperature。填了不兼容的参数模型会报错，留空最稳。</div>'+
+   '</div>'+
+   '<div class="agx">'+
+    '<div class="agxh">参数备份<span class="cnt">换设备、或备份一套满意的调参</span></div>'+
+    '<div class="agxf"><textarea rows="3" data-f="io" placeholder="点「导出」后显示在这里；也可粘贴别人的参数 JSON 再点「导入」"></textarea></div>'+
+    '<div class="agxrow"><button type="button" class="btn btn-gray btn-sm agxexp">导出到文本框</button>'+
+    '<button type="button" class="btn btn-pri btn-sm agxdlf">下载 JSON</button>'+
+    '<button type="button" class="btn btn-gray btn-sm agximp">导入文本框内容</button></div>'+
+   '</div>';
+  agxBootstrap();
+}
+document.addEventListener('click',function(e){
+  var t=e.target;
+  function c(s){return (t&&t.closest)?t.closest(s):null}
+  if(c('.agxsavep')){agSetPersona(agxVal('persona'));agxNote('人设已保存，对所有 AI 功能生效');return}
+  if(c('.agxclearp')){agSetPersona('');var p=agxF('persona');if(p)p.value='';agxNote('人设已清空');return}
+  var pre=c('.agxpre');
+  if(pre){
+    var idx=Number(pre.getAttribute('data-i')),ps=AGX_PRESETS[idx];
+    if(ps){agSetTune(agxCur(),ps.o);agxSyncBase(ps.o);agxFill();agxNote('已套用「'+ps.n+'」并保存')}
+    return;
+  }
+  if(c('.agxsave')){agSetTune(agxCur(),agxRead());agxEff();agxNote('已保存当前功能的高级参数');return}
+  if(c('.agxapplyall')){
+    var o=agxRead(),ks=agxKeys();
+    for(var i=0;i<ks.length;i++)agSetTune(ks[i],o);
+    agxEff();agxNote('已把当前参数套用到全部 '+ks.length+' 个功能');
+    return;
+  }
+  if(c('.agxreset1')){agResetTune(agxCur());agxFill();agxNote('已恢复「'+(agTune(agxCur()).lab)+'」的默认参数');return}
+  if(c('.agxresetall')){
+    try{localStorage.removeItem('wb_agent_tune')}catch(e){}
+    agxFill();agxNote('已清空全部自定义参数，回到默认值');
+    return;
+  }
+  if(c('.agxexp')){agxExport();agxNote('已导出到文本框，可复制保存');return}
+  if(c('.agxdlf')){agxDownload();agxNote('参数 JSON 已开始下载');return}
+  if(c('.agximp')){if(agxImport(agxVal('io')))agxNote('导入成功');return}
+});
+document.addEventListener('change',function(e){
+  var t=e.target;
+  if(!t)return;
+  if(t.id&&t.id.indexOf('agFnSel')>=0){agxFill();return}
+  if(t.getAttribute&&t.getAttribute('data-f'))agxEff();
+});
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',agxRender);else agxRender();
+window.agxRender=agxRender;window.agxExport=agxExport;window.agxImport=agxImport;window.agSetTune=agSetTune;
+window.aiChat=aiChat;window.agBuildMessages=agBuildMessages;window.agTune=agTune;window.agPersona=agPersona;window.AGX_PRESETS=AGX_PRESETS;
 
 
 /* ---------- 简历↔岗位 匹配打分（BYOK · 结果只存本机） ---------- */
