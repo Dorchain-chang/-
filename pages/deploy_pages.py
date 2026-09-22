@@ -20,7 +20,7 @@ PAGES = [
     ("JgXPaIiaDMGt2xH3vBftAo", SINGLE),
 ]
 
-MSG = "v39：Agent 高度自定义 —— 全局人设（一次填写，七个 AI 功能全部带上你的背景）、5 套预设方案、top_p / frequency_penalty / presence_penalty / 模型覆盖 / 输出格式 / 长度 / 语言逐功能可调、参数导出导入备份；并修复「调参台里的 System Prompt 从未真正下发给模型」的缺陷"
+MSG = "v40：简历上传改为 Word / PDF —— 不再接受 TXT / Markdown；PDF 也能直接上传了（内置零依赖正文抽取，中文简历可正常识别，扫描件会如实提示改用粘贴）；解析时按钮显示「解析中…」"
 
 
 def run_page_script(name, args, token):
