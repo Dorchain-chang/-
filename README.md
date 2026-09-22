@@ -1,8 +1,8 @@
-# 秋招求职台 (Qiuzhao Workbench)
+# Job Seeker（原「秋招求职台」Qiuzhao Workbench）
 
 > 一个为 2027 届校招求职定制的个人数字工作台：**把"看岗位"和"管投递"装进同一个页面。**
 >
-> 最后更新：2026-09-14
+> 最后更新：2026-09-22（v40）· 完整版本历史见 [CHANGELOG.md](CHANGELOG.md)
 
 ## 为什么做这个
 

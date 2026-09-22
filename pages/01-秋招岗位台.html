@@ -2299,6 +2299,208 @@ window.taskDel=taskDel;window.taskPostpone=taskPostpone;window.taskDueItems=task
 window.schRender=schRender;window.agChatSend=agChatSend;window.agChatRestore=agChatRestore;window.ibRawParse=ibRawParse;
 window.rvMic=rvMic;window.remTick=remTick;window.remArm=remArm;window.remCandidates=remCandidates;
 
+
+/* ---------- 简历文件解析：Word(.docx) + PDF 零依赖文本抽取 ---------- */
+var RS_NL=String.fromCharCode(10),RS_CR=String.fromCharCode(13);
+function rsFileExt(n){var p=String(n||'').split('.');return p.length>1?p[p.length-1].toLowerCase():''}
+function rsHex(n,w){var s=(+n).toString(16).toUpperCase();while(s.length<w)s='0'+s;return s}
+function rsB2S(u8){var out='',CH=8192,i;for(i=0;i<u8.length;i+=CH)out+=String.fromCharCode.apply(null,u8.subarray(i,i+CH));return out}
+function rsS2B(s){var u=new Uint8Array(s.length),i;for(i=0;i<s.length;i++)u[i]=s.charCodeAt(i)&255;return u}
+function rsClean(t){
+  var lines=String(t||'').split(RS_NL),out=[],i,s;
+  for(i=0;i<lines.length;i++){
+    s=lines[i].replace(/[ ]+$/,'').replace(/^[ ]+/,'');
+    if(!s){if(out.length&&out[out.length-1]!=='')out.push('');continue}
+    out.push(s);
+  }
+  var r=out.join(RS_NL);
+  while(r.indexOf(RS_NL+RS_NL+RS_NL)>=0)r=r.split(RS_NL+RS_NL+RS_NL).join(RS_NL+RS_NL);
+  return r.trim();
+}
+function rsScore(s){
+  var t=String(s||''),cjk=0,al=0,i,c;
+  for(i=0;i<t.length;i++){c=t.charCodeAt(i);if(c>=19968&&c<=40959)cjk++;else if((c>=65&&c<=90)||(c>=97&&c<=122))al++}
+  return {n:t.length,cjk:cjk,al:al};
+}
+function rsBusy(on){
+  var el=document.querySelector('.rsuptxt');if(!el)return;
+  if(on){if(el.getAttribute('data-t')==null)el.setAttribute('data-t',el.textContent);el.textContent='解析中…'}
+  else{var o=el.getAttribute('data-t');if(o!=null){el.textContent=o;el.removeAttribute('data-t')}}
+}
+/* 浏览器原生解压：先按 zlib(deflate) 试，失败再按裸 deflate 试（PDF 两种都有） */
+function rsInflateAny(u8){
+  if(typeof DecompressionStream==='undefined')return Promise.reject(new Error('当前浏览器不支持内置解压'));
+  function once(fmt){
+    try{
+      var ds=new DecompressionStream(fmt);
+      return new Response(new Blob([u8]).stream().pipeThrough(ds)).arrayBuffer().then(function(a){return new Uint8Array(a)},function(){return null});
+    }catch(e){return Promise.resolve(null)}
+  }
+  return once('deflate').then(function(r){return r||once('deflate-raw')}).then(function(r){
+    if(!r||!r.length)throw new Error('流解压失败');return r});
+}
+function pdfNorm(h){var s=String(h==null?'':h).replace(/[^0-9a-fA-F]/g,'').toUpperCase();s=s.replace(/^0+(?=.)/,'');return s||'0'}
+/* ToUnicode 的目标串是 UTF-16BE 码元（4 位十六进制一个字），个别文件写成 2 位，两种都兼容 */
+function pdfHexStr(h){
+  var s=String(h==null?'':h).replace(/[^0-9a-fA-F]/g,''),out='',i;
+  if(s.length>=4&&s.length%4===0){for(i=0;i<s.length;i+=4)out+=String.fromCharCode(parseInt(s.substr(i,4),16));return out}
+  if(s.length%2)s=s.slice(0,s.length-1);
+  for(i=0;i<s.length;i+=2)out+=String.fromCharCode(parseInt(s.substr(i,2),16));
+  return out;
+}
+function pdfObjs(raw){
+  var objs={},re=/(\d+)\s+(\d+)\s+obj/g,m,list=[],i,s,e;
+  while((m=re.exec(raw))!==null)list.push({n:m[1],at:m.index+m[0].length});
+  for(i=0;i<list.length;i++){
+    s=list[i].at;e=raw.indexOf('endobj',s);if(e<0)e=raw.length;
+    objs[list[i].n]=raw.slice(s,e);
+  }
+  return objs;
+}
+function pdfStreamOf(body){
+  var si=body.indexOf('stream');if(si<0)return '';
+  var p=si+6;
+  if(body.charAt(p)===RS_CR)p++;
+  if(body.charAt(p)===RS_NL)p++;
+  var ei=body.indexOf('endstream',p);if(ei<0)ei=body.length;
+  var s=body.slice(p,ei);
+  var lm=body.match(/\/Length\s+(\d+)/);
+  if(lm){var n0=parseInt(lm[1],10);if(n0>0&&n0<s.length)s=s.slice(0,n0)}
+  return s;
+}
+/* ToUnicode CMap：中文 PDF 多用 CID 编码，必须靠它把字形码还原成 Unicode */
+function pdfCMap(d,c1,c2){
+  var re=/beginbfchar([\s\S]*?)endbfchar/g,m,rows,i,two,w,tgt;
+  while((m=re.exec(d))!==null){
+    rows=m[1].match(/<[0-9a-fA-F]+>\s*<[0-9a-fA-F]+>/g)||[];
+    for(i=0;i<rows.length;i++){
+      two=rows[i].match(/<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>/);
+      if(!two)continue;
+      w=two[1].length<=2?1:2;tgt=w===1?c1:c2;
+      tgt[pdfNorm(two[1])]=pdfHexStr(two[2]);
+    }
+  }
+  re=/beginbfrange([\s\S]*?)endbfrange/g;
+  while((m=re.exec(d))!==null){
+    rows=m[1].match(/<[0-9a-fA-F]+>\s*<[0-9a-fA-F]+>\s*(?:<[0-9a-fA-F]+>|\[[\s\S]*?\])/g)||[];
+    for(i=0;i<rows.length;i++){
+      var it=rows[i].match(/<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>\s*(?:<([0-9a-fA-F]+)>|\[([\s\S]*?)\])/);
+      if(!it)continue;
+      var lo=parseInt(it[1],16),hi=parseInt(it[2],16);
+      w=it[1].length<=2?1:2;tgt=w===1?c1:c2;
+      if(it[3]!=null){
+        var base=parseInt(it[3],16),c;
+        for(c=lo;c<=hi&&c-lo<65535;c++)tgt[pdfNorm(rsHex(c,it[1].length))]=String.fromCharCode(base+(c-lo));
+      }else{
+        var arr=it[4].match(/<[0-9a-fA-F]+>/g)||[],q;
+        for(q=0;q<arr.length&&lo+q<=hi;q++)tgt[pdfNorm(rsHex(lo+q,it[1].length))]=pdfHexStr(arr[q]);
+      }
+    }
+  }
+}
+function pdfStrBytes(lit,hex){
+  var bytes=[],i,c,nx,o,h;
+  if(lit!=null){
+    for(i=0;i<lit.length;i++){
+      c=lit.charAt(i);
+      if(c!=='\\'){bytes.push(c.charCodeAt(0)&255);continue}
+      nx=lit.charAt(i+1);i++;
+      if(nx>='0'&&nx<='7'){
+        o=nx;
+        if(lit.charAt(i+1)>='0'&&lit.charAt(i+1)<='7'){o+=lit.charAt(i+1);i++;
+          if(lit.charAt(i+1)>='0'&&lit.charAt(i+1)<='7'){o+=lit.charAt(i+1);i++}}
+        bytes.push(parseInt(o,8)&255);continue;
+      }
+      if(nx==='n'){bytes.push(10);continue}
+      if(nx==='r'){bytes.push(13);continue}
+      if(nx==='t'){bytes.push(9);continue}
+      bytes.push(nx.charCodeAt(0)&255);
+    }
+  }else{
+    h=String(hex==null?'':hex).replace(/[^0-9a-fA-F]/g,'');
+    if(h.length%2)h=h.slice(0,h.length-1);
+    for(i=0;i<h.length;i+=2)bytes.push(parseInt(h.substr(i,2),16));
+  }
+  return bytes;
+}
+function pdfBytes2Text(b,c1,c2){
+  var out='',i=0,k,cu;
+  while(i<b.length){
+    if(i+1<b.length){
+      k=pdfNorm(rsHex(b[i],2)+rsHex(b[i+1],2));
+      if(c2[k]!=null){out+=c2[k];i+=2;continue}
+    }
+    k=pdfNorm(rsHex(b[i],2));
+    if(c1[k]!=null){out+=c1[k];i+=1;continue}
+    cu=b[i];out+=(cu===10||cu===13)?RS_NL:String.fromCharCode(cu);i+=1;
+  }
+  return out;
+}
+/* 内容流里只取文字操作符（Tj / TJ / 单引号 / 双引号）的操作数，定位操作符 Td、TD、Tm、ET 当成换行 */
+function pdfContent(d,c1,c2){
+  var out='',m2;
+  var re=/(T[dD]|T\*|ET|T[mM])|(\[((?:[^\[\]\\]|\\.)*)\]\s*TJ)|(\(((?:[^()\\]|\\.)*)\)\s*(?:T[jJ]|'|"))|((?:<([0-9a-fA-F\s]+)>\s*)+(?:T[jJ]|'|"))/g,m;
+  while((m=re.exec(d))!==null){
+    if(m[1]!=null){out+=RS_NL;continue}
+    if(m[3]!=null){
+      var re2=/\(((?:[^()\\]|\\.)*)\)|<([0-9a-fA-F\s]+)>/g;
+      while((m2=re2.exec(m[3]))!==null){
+        if(m2[1]!=null)out+=pdfBytes2Text(pdfStrBytes(m2[1],null),c1,c2);
+        else out+=pdfBytes2Text(pdfStrBytes(null,m2[2]),c1,c2);
+      }
+      continue;
+    }
+    if(m[6]!=null){out+=pdfBytes2Text(pdfStrBytes(null,m[6]),c1,c2);continue}
+    if(m[5]!=null){out+=pdfBytes2Text(pdfStrBytes(m[5],null),c1,c2);continue}
+  }
+  return out;
+}
+function pdfText(ab){
+  var raw=rsB2S(new Uint8Array(ab));
+  if(raw.indexOf('%PDF')<0)return Promise.reject(new Error('不是有效的 PDF 文件'));
+  var objs=pdfObjs(raw),nums=[],k,jobs=[],i;
+  for(k in objs)nums.push(k);
+  nums.sort(function(a,b){return (+a)-(+b)});
+  for(i=0;i<nums.length;i++){
+    (function(body){
+      var st=pdfStreamOf(body);
+      if(!st){jobs.push(Promise.resolve(''));return}
+      if(body.indexOf('/FlateDecode')>=0)jobs.push(rsInflateAny(rsS2B(st)).then(function(r){return rsB2S(r)},function(){return ''}));
+      else jobs.push(Promise.resolve(st));
+    })(objs[nums[i]]);
+  }
+  return Promise.all(jobs).then(function(list){
+    var c1={},c2={},parts=[],j,d;
+    for(j=0;j<list.length;j++){d=list[j];if(d&&(d.indexOf('beginbfchar')>=0||d.indexOf('beginbfrange')>=0))pdfCMap(d,c1,c2)}
+    for(j=0;j<list.length;j++){d=list[j];if(d&&d.indexOf('BT')>=0)parts.push(pdfContent(d,c1,c2))}
+    var t=rsClean(parts.join(RS_NL));
+    if(!t)throw new Error('没有找到文字层');
+    return t;
+  });
+}
+function rsApplyText(t,name){
+  if(window.rsSetText){window.rsSetText(t,name);return}
+  if(typeof rsSetText==='function'){rsSetText(t,name);return}
+  alert('已解析出内容，但页面未就绪：请用「粘贴文本」导入');
+}
+function rsReadPdf(f){
+  if(typeof DecompressionStream==='undefined'){alert('当前浏览器版本较旧，无法直接读取 PDF：请复制文本后点「粘贴文本」导入');return}
+  rsBusy(true);
+  f.arrayBuffer().then(pdfText).then(function(t){
+    rsBusy(false);
+    var s=rsScore(t);
+    if(s.n<20||(s.cjk<10&&s.al<20))throw new Error('NO_TEXT');
+    rsApplyText(t,f.name);
+  },function(e){
+    rsBusy(false);
+    var m=(e&&e.message)||'';
+    if(m==='NO_TEXT'){alert('这个 PDF 没抽到文字（多半是扫描件/图片版，或用了不常见的字体编码）。请用阅读器打开后全选复制，再点「粘贴文本」导入');return}
+    alert('读取 PDF 失败（'+(m||'未知')+'）：请复制文本后点「粘贴文本」导入');
+  });
+}
+window.rsReadPdf=rsReadPdf;window.pdfText=pdfText;window.pdfContent=pdfContent;
+window.rsFileExt=rsFileExt;window.rsScore=rsScore;window.rsBusy=rsBusy;
+
 var PAGE_URLS={overview:'https://www.workbuddy.cn/space/d/szZlSjyPnnpGwDW4OD4y0X',autumn:'https://www.workbuddy.cn/space/d/G9pPkUVWIc6Fk43Mnn1csc',soe:'https://www.workbuddy.cn/space/d/PQ5cLpifIyB1CaQB2OIMrm',intern:'https://www.workbuddy.cn/space/d/JgXPaIiaDMGt2xH3vBftAo'};
 function fetchJobs(){var out=[],cur=null;function once(){return db.query({databaseId:'GgZ71tywhs4HEZytFSqXTP',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=5000)return out;cur=nx;return once()})}return once()}
 function fetchApps(){var out=[],cur=null;function once(){return db.query({databaseId:'oBGkMFTv9Xv4Xn5gFOK18S',pageSize:200,startCursor:cur||undefined}).then(function(res){var rs=res.results||[],nx=res.nextCursor;out=out.concat(rs);if(!res.hasMore||!nx||!rs.length||nx===cur||out.length>=3000)return out;cur=nx;return once()})}return once()}

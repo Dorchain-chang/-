@@ -579,6 +579,47 @@ const MOCK = `
   console.log('Word上传: docx解析并保存=', docxOk);
   if (!docxOk) errors.push('docx upload broken');
 
+  // PDF 简历上传：零依赖抽取（CID + ToUnicode CMap）；并校验只收 Word/PDF、不再收 txt/md
+  let pdfOk = false, acceptOk = false, txtRejOk = false;
+  const pdfPath = path.join(__dirname, 'test_resume.pdf');
+  const rsInput = (await page.$('#rsFile')) || (await page.$('#ov_rsFile'));
+  if (fs.existsSync(pdfPath) && rsInput) {
+    acceptOk = await page.evaluate(() => {
+      const g = (id) => document.getElementById('ov_' + id) || document.getElementById(id);
+      const f = g('rsFile');
+      return !!f && f.getAttribute('accept') === '.doc,.docx,.pdf';
+    });
+    await page.evaluate(() => { localStorage.removeItem('wb_resumes'); if (window.rsRender) window.rsRender(); });
+    await rsInput.setInputFiles(pdfPath);
+    await page.waitForTimeout(900);
+    pdfOk = await page.evaluate(() => {
+      const g = (id) => document.getElementById('ov_' + id) || document.getElementById(id);
+      const save = g('rsSave');
+      if (save) save.click();
+      const a = JSON.parse(localStorage.getItem('wb_resumes') || '[]');
+      const t = (a[a.length - 1] || {}).text || '';
+      return t.indexOf('窦畅') >= 0 && t.indexOf('KG-RAG') >= 0 && t.indexOf('PyTorch') >= 0 && t.indexOf('西南交通大学') >= 0;
+    });
+    // txt 已不再支持：上传后缓冲为空 → 点保存不会新增简历
+    const txtPath = path.join(__dirname, 'tmp_smoke_resume.txt');
+    fs.writeFileSync(txtPath, '不应该被接受的纯文本简历', 'utf8');
+    await page.evaluate(() => { localStorage.removeItem('wb_resumes'); if (window.rsRender) window.rsRender(); });
+    await rsInput.setInputFiles(txtPath);
+    await page.waitForTimeout(300);
+    txtRejOk = await page.evaluate(() => {
+      const g = (id) => document.getElementById('ov_' + id) || document.getElementById(id);
+      const save = g('rsSave');
+      if (save) save.click();
+      return JSON.parse(localStorage.getItem('wb_resumes') || '[]').length === 0;
+    });
+    fs.unlinkSync(txtPath);
+    await page.evaluate(() => { localStorage.removeItem('wb_resumes'); if (window.rsRender) window.rsRender(); });
+  }
+  console.log('PDF上传: accept=', acceptOk, '| 中文抽取并保存=', pdfOk, '| txt 已拒绝=', txtRejOk);
+  if (!acceptOk) errors.push('resume accept types wrong');
+  if (!pdfOk) errors.push('pdf upload broken');
+  if (!txtRejOk) errors.push('txt upload not rejected');
+
   // M2 匹配打分：无简历提示 → Mock 打分出徽章 → 按匹配度排序
   const match = await page.evaluate(async () => {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
