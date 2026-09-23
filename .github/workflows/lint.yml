@@ -133,3 +133,15 @@ jobs:
           export NODE_PATH="$PWD/node_modules"
           export CHROME_EXE="$(node -e 'console.log(require("playwright-core").chromium.executablePath())')"
           node pages/smoke_browser.js
+
+      # 每日抓取 → 重新发布 → 用户打开自动补新岗位，这条链路靠 smoke_site.js 兜底：
+      # 站点打开时会把快照里「本机还没有」的岗位增量合并进 localStorage，
+      # 必须保证既补得上、又不冲掉用户已有数据、重复刷新不翻倍。
+      - name: Build standalone site
+        run: python3 pages/build_site.py
+
+      - name: Site snapshot sync smoke test
+        run: |
+          export NODE_PATH="$PWD/node_modules"
+          export CHROME_EXE="$(node -e 'console.log(require(\"playwright-core\").chromium.executablePath())')"
+          node pages/smoke_site.js

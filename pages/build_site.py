@@ -30,6 +30,34 @@ SITE_ADAPTER = r"""
     try { return JSON.parse(localStorage.getItem('qz_schema')||'null')||window.__SITE_SCHEMA__; }
     catch(e){ return window.__SITE_SCHEMA__; }
   }
+  function loadGone(){
+    try { return JSON.parse(localStorage.getItem('qz_seedGone')||'[]'); } catch(e){ return []; }
+  }
+  function saveGone(a){
+    try { localStorage.setItem('qz_seedGone', JSON.stringify(a.slice(-3000))); } catch(e){}
+  }
+  // 取字段纯文本（select 存的是 {text,id} 对象，text 存的是字符串）
+  function plain(v){
+    if(v==null)return '';
+    if(typeof v==='object')return String(v.text||v.value||v.name||'');
+    return String(v);
+  }
+  // 稳定去重键：岗位表优先牛客ID（公司改名也能对上），实习表用公司+岗位名
+  function keyOf(n,r){
+    if(n==='jobs'){
+      var id=plain(r['牛客ID']);
+      return id ? ('nc:'+id) : (plain(r['公司']) ? 'co:'+plain(r['公司']) : '');
+    }
+    if(n==='interns'){
+      return plain(r['公司']) ? ('co:'+plain(r['公司'])+'|'+plain(r['岗位名称'])) : '';
+    }
+    return '';
+  }
+  function mkRec(r){
+    var c={};Object.keys(r).forEach(function(k){c[k]=r[k]});
+    if(!c._id){var id='seed_'+Math.random().toString(36).slice(2,10)+'_'+Math.floor(Math.random()*1e6);c._id=id;c.record_id=c.record_id||id;c.id=c.id||id;}
+    return c;
+  }
   function fakeDb(names){
     var map={};
     names.forEach(function(n){ map[(loadSchema()[n]||{}).dbid||n]=n; });
@@ -61,8 +89,13 @@ SITE_ADAPTER = r"""
         return Promise.resolve({ok:true});
       },
       deleteRecord:function(opts){
-        var n=nameOf(opts);
-        saveLS(n,loadLS(n).filter(function(r){return (r._id||r.record_id)!==opts.recordId;}));
+        var n=nameOf(opts), gone=loadGone();
+        var rows=loadLS(n).filter(function(r){
+          if((r._id||r.record_id)!==opts.recordId) return true;
+          var k=keyOf(n,r); if(k) gone.push(k);   // 记住删过的快照条目，下次同步不再塞回来
+          return false;
+        });
+        saveLS(n,rows); saveGone(gone);
         return Promise.resolve({ok:true});
       },
       getSchema:function(opts){
@@ -77,19 +110,31 @@ SITE_ADAPTER = r"""
   }
   var NAMES=['jobs','apps','interns','inbox'];
   window.__SMART_PAGE__={database:fakeDb(NAMES)};
-  // 首次访问灌入真实数据快照；之后不再覆盖，避免冲掉用户改动
-  if(!localStorage.getItem('qz_seeded')){
+  // 每次打开都与内置快照对账：只补「快照里有、本机没有」的岗位，
+  // 不动你已有的投递状态/备注，也不复活你手动删掉过的条目
+  var SYNC_ADDED=0, SYNC_FIRST=false;
+  function syncSeed(){
     var seed=window.__SITE_SEED__||{};
+    var gone={}; loadGone().forEach(function(k){gone[k]=1});
+    var first=!localStorage.getItem('qz_seeded');
+    var added=0;
     NAMES.forEach(function(n){
-      var rows=(seed[n]||[]).map(function(r){
-        var c={};Object.keys(r).forEach(function(k){c[k]=r[k]});
-        if(!c._id){var id='seed_'+Math.random().toString(36).slice(2,10)+'_'+Math.floor(Math.random()*1e6);c._id=id;c.record_id=c.record_id||id;c.id=c.id||id;}
-        return c;
+      var rows=first?[]:loadLS(n);
+      var have={};
+      rows.forEach(function(r){var k=keyOf(n,r);if(k)have[k]=1;});
+      (seed[n]||[]).forEach(function(r){
+        var k=keyOf(n,r);
+        if(!k){ if(first) rows.push(mkRec(r)); return; }  // apps/inbox 无稳定键，仅首次灌
+        if(have[k]||gone[k])return;
+        rows.push(mkRec(r)); have[k]=1; if(n==='jobs'||n==='interns') added++;
       });
       saveLS(n,rows);
     });
     localStorage.setItem('qz_seeded',seed.exportedAt||'1');
+    SYNC_ADDED=added; SYNC_FIRST=first;
+    return added;
   }
+  syncSeed();
   var sch=loadSchema();
   window.__SITE_OPTS__={};
   NAMES.forEach(function(n){ window.__SITE_OPTS__[n]=(sch[n]||{}).options||{}; });
@@ -149,13 +194,15 @@ SITE_ADAPTER = r"""
       });
       saveLS(n,rows);
     });
+    saveGone([]);
     localStorage.setItem('qz_seeded',seed.exportedAt||'1');
     location.reload();
   }
   document.addEventListener('DOMContentLoaded',function(){
     var bar=document.createElement('div');
     bar.style.cssText='position:relative;z-index:99;background:#171717;color:#d4d4d4;text-align:center;padding:7px 12px;font-size:12.5px;line-height:1.6';
-    bar.innerHTML='独立站点版：数据保存在本机浏览器（不上传服务器）· 换设备或怕丢请先导出备份 '
+    var tip=SYNC_ADDED>0?('· '+(SYNC_FIRST?'已载入 ':'本次新增 ')+SYNC_ADDED+' 个岗位 · '):'· ';
+    bar.innerHTML='独立站点版：数据保存在本机浏览器（不上传服务器）'+tip+'换设备或怕丢请先导出备份 '
       +'<a href="javascript:void(0)" id="qzExp" style="color:#fff;text-decoration:underline;margin-left:6px">导出备份</a> '
       +'<a href="javascript:void(0)" id="qzImp" style="color:#fff;text-decoration:underline;margin-left:6px">导入备份</a> '
       +'<a href="javascript:void(0)" id="qzRst" style="color:#f2c1c3;text-decoration:underline;margin-left:6px">重置为最新快照</a>';

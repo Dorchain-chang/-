@@ -9,7 +9,8 @@ INTERN_DB = "tgH8096uENTaIj8RSY9qm5"
 DB_DIR = r"D:/workbuddy/resources/app.asar.unpacked/resources/plugins/workbuddy-builtin/skills/library/database"
 PY = sys.executable
 
-TARGET_CITIES = ["成都", "北京", "天津"]
+TARGET_CITIES = ["成都", "北京", "天津"]          # 目标城市，命中即收
+REMOTE_KW = ["远程", "线上", "居家", "全国", "不限", "多地"]  # 远程/全国类也收（2026-09-23 放宽）
 CAREER_KW = ["算法", "人工智能", "AI", "大模型", "机器学习", "深度学习", "数据", "软件", "开发",
              "计算机", "信息技术", "网络安全", "信息安全", "测试", "前端", "后端", "运维", "嵌入式", "研发", "通信"]
 
@@ -17,16 +18,18 @@ CAREER_KW = ["算法", "人工智能", "AI", "大模型", "机器学习", "深�
 def fetch_nowcoder():
     def fetch_page(page):
         url = f"https://www.nowcoder.com/np-api/u/school-schedule/list-card?_={int(time.time()*1000)}"
-        data = urllib.parse.urlencode({"query": "", "propertyId": "", "page": page, "pageSize": 20, "tab": "2"}).encode()
+        # tab=2（实习分类）只有 30 多条，池子太小；改抓 tab=3 全量校招日程，
+        # 再靠 match() 里「batchName 必须含实习」的硬条件筛出真实习批次
+        data = urllib.parse.urlencode({"query": "", "propertyId": "", "page": page, "pageSize": 100, "tab": "3"}).encode()
         req = urllib.request.Request(url, data=data, headers={
             "Content-Type": "application/x-www-form-urlencoded",
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-            "Referer": "https://www.nowcoder.com/school/schedule"})
+            "Referer": "https://www.nowcoder.com/jobs/school/schedule"})
         with urllib.request.urlopen(req, timeout=15) as r:
             return json.loads(r.read().decode())
 
     rows, page, total_page = [], 1, 1
-    while page <= total_page and page <= 10:
+    while page <= total_page and page <= 40:
         d = fetch_page(page).get("data", {})
         total_page = d.get("totalPage") or 1
         rows += d.get("datas") or []
@@ -53,22 +56,27 @@ def match(row):
         return None
     cities = [c for c in (row.get("cityList") or []) if c]
     hit_cities = [c for c in cities if any(c.find(t) >= 0 for t in TARGET_CITIES)]
-    if not hit_cities:
+    remote_hit = [c for c in cities if any(c.find(t) >= 0 for t in REMOTE_KW)]
+    # 没写城市、或写了「远程/全国/不限」的一并收录（仅实习批次，秋招批次仍被上面挡掉）
+    broad = (not cities) or bool(remote_hit)
+    if not (hit_cities or broad):
         return None
+    place = "、".join(hit_cities) if hit_cities else ("、".join(remote_hit) if remote_hit else "不限城市/远程")
     careers = row.get("careerNameList") or []
+    # 方向不再硬过滤：实习批次池子本来就小（约 37 条），2026-09-23 起非技术岗也收录，
+    # 由用户在页面自行筛掉；hit_careers 只用来标注岗位名称
     hit_careers = [c for c in careers if any(k.lower() in str(c).lower() for k in CAREER_KW)]
-    if not hit_careers:
-        return None
     link = row.get("customWangshenLink") or row.get("sourceInformation") or ""
     eval_txt = re.sub(r"\s+", " ", str(row.get("companyEvaluation") or ""))[:60]
     rec = {
         "公司": {"text": str(row.get("name") or "").strip()},
-        "岗位名称": {"text": "、".join(str(c) for c in hit_careers[:6])[:60] or "实习"},
-        "工作地点": {"text": "、".join(hit_cities)},
+        "岗位名称": {"text": ("、".join(str(c) for c in hit_careers[:6])
+                          or "、".join(str(c) for c in careers[:3]) or "实习")[:60]},
+        "工作地点": {"text": place},
         "岗位要求": {"text": batch or "实习"},
         "投递状态": {"select": "待投递"},
         "来源": {"text": "牛客校招日程"},
-        "备注": {"text": (f"{batch} · " if batch else "") + (eval_txt or "牛客同步")},
+        "备注": {"text": ("技术岗 · " if hit_careers else "非技术岗 · ") + (f"{batch} · " if batch else "") + (eval_txt or "牛客同步")},
     }
     if row.get("companyId"):
         # 页面「公司情报」凭它生成牛客企业主页/面经/真题/薪资/讨论 5 条精准深链
@@ -101,7 +109,7 @@ def main():
         print("NO TOKEN"); return
 
     rows = fetch_nowcoder()
-    print(f"nowcoder tab2 cards: {len(rows)}")
+    print(f"nowcoder cards (tab=3): {len(rows)}")
     matched, seen = [], set()
     for r in rows:
         m = match(r)
